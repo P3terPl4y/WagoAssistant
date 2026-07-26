@@ -1,0 +1,47 @@
+services:
+  app:
+    build: .
+    container_name: wago_app
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - SERVER_ADDR=0.0.0.0:3000
+      - APP_ENV=production
+      - BASE_URL=https://wago.redcliente.cl
+      - DATABASE_PATH=/root/data/wago.db
+      - REDIS_URL=redis://redis:6379/0
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GOOGLE_REDIRECT_URL=${GOOGLE_REDIRECT_URL}
+      - COOKIE_SECURE=true
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - wago_data:/root/data
+      - wago_sessions:/root/sessions
+
+  redis:
+    image: redis:7-alpine
+    container_name: wago_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  wago_data:
+  redis_data:
+  wago_sessions:

@@ -1,0 +1,25 @@
+Instrucciones para Crear la Base de Datos y Ejecutar el Servidor Wago
+========================================================================
+
+Wago ahora utiliza PostgreSQL y Redis. Tienes dos opciones para ejecutar la plataforma:
+
+OPCIÓN 1: AUTOMÁTICA (RECOMENDADA - USANDO DOCKER)
+--------------------------------------------------
+Esta es la forma más fácil y moderna. No necesitas instalar bases de datos manualmente.
+1. Asegúrate de tener Docker abierto/corriendo.
+2. Abre tu terminal en la carpeta del proyecto.
+3. Ejecuta el comando: docker-compose up -d --build
+4. ¡Listo! Esto descargará PostgreSQL, creará la base de datos "wago", iniciará Redis y compilará/ejecutará tu servidor Go automáticamente en el puerto 3000.
+
+OPCIÓN 2: MANUAL (USANDO TU PROPIO POSTGRESQL LOCAL)
+--------------------------------------------------
+Si prefieres no usar Docker y ejecutar "go run main.go" manualmente, debes seguir estos pasos:
+1. Abre tu herramienta de PostgreSQL local (pgAdmin, DBeaver, o psql).
+2. Crea una base de datos vacía llamada "wago". Comando SQL:
+   CREATE DATABASE wago;
+3. Asegúrate de tener Redis instalado y corriendo localmente en el puerto 6379.
+4. Ejecuta el servidor desde la consola:
+   go run ./src/main.go
+   (El servidor Go se encargará de crear todas las tablas automáticamente al conectarse a la base de datos gracias al archivo migrations.go).
+
+------------------------------------------------------------------------

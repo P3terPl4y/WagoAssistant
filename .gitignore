@@ -1,0 +1,24 @@
+# Secretos y configuración local
+.env
+*.env.local
+
+# Binario compilado
+wago
+wago.exe
+*.exe
+
+# Bases de datos SQLite de sesiones de WhatsApp
+*.db
+*.db-shm
+*.db-wal
+
+# Logs
+*.log
+
+# Cobertura de tests
+coverage.out
+
+# Caché del módulo
+vendor/
+
+sqlite.db

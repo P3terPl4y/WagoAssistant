@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wago – Tu asistente de WhatsApp para ahorrar tiempo y vender más</title>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <link rel="stylesheet" href="/assets/css/styles.css?v=3" />
+    <style>
+        /* ===== HERO ===== */
+        .hero {
+            min-height: 100vh;
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            position: relative;
+            overflow: hidden;
+            background: var(--color-bg-base);
+            padding-top: 70px;
+        }
+
+        .hero-left {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 60px 40px 60px 80px;
+            color: var(--color-text-main);
+            position: relative;
+            z-index: 2;
+        }
+
+        .badge-top {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--color-bg-surface-elevated);
+            padding: 6px 18px;
+            border-radius: 40px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 24px;
+            align-self: flex-start;
+            border: 1px solid var(--color-border);
+            color: var(--color-primary);
+        }
+
+        .badge-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: rgba(16, 185, 129, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        .hero-left h1 {
+            font-size: clamp(2.5rem, 5vw, 4.2rem);
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 20px;
+            color: var(--color-text-main);
+        }
+
+        .hero-left h1 .highlight {
+            background: linear-gradient(90deg, #10b981, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-left .subtitle {
+            font-size: clamp(1.1rem, 1.4vw, 1.25rem);
+            font-weight: 400;
+            color: var(--color-text-muted);
+            margin-bottom: 36px;
+            max-width: 90%;
+            line-height: 1.6;
+        }
+
+        .hero-left .cta-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .hero-left .trust-row {
+            margin-top: 48px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .hero-left .trust-row .avatars {
+            display: flex;
+        }
+
+        .hero-left .trust-row .avatars img {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: 2px solid var(--color-bg-base);
+            margin-right: -14px;
+            object-fit: cover;
+        }
+
+        .hero-left .trust-row .avatars img:last-child {
+            margin-right: 0;
+        }
+
+        .hero-left .trust-row .trust-text {
+            font-size: 0.9rem;
+            color: var(--color-text-dim);
+        }
+
+        .hero-left .trust-row .trust-text strong {
+            color: var(--color-text-main);
+        }
+
+        .hero-right {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 60px 60px 60px 48px;
+            position: relative;
+            overflow: hidden;
+            background: radial-gradient(circle at center, rgba(16, 185, 129, 0.08) 0%, transparent 60%);
+        }
+
+        .hero-right .content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-right .content .label {
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--color-text-dim);
+            margin-bottom: 16px;
+        }
+
+        .hero-right .content h2 {
+            font-size: clamp(1.8rem, 3vw, 2.8rem);
+            margin-bottom: 24px;
+            color: var(--color-text-main);
+        }
+
+        .benefits-list {
+            list-style: none;
+            margin-bottom: 32px;
+        }
+
+        .benefits-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            padding: 16px 0;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .benefits-list li:last-child {
+            border-bottom: none;
+        }
+
+        .benefits-list li .icon {
+            font-size: 1.4rem;
+            color: var(--color-primary);
+            background: var(--color-bg-surface-elevated);
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .benefits-list li .text strong {
+            font-weight: 600;
+            color: var(--color-text-main);
+            display: block;
+            font-size: 1.05rem;
+        }
+
+        .benefits-list li .text span {
+            font-size: 0.9rem;
+            color: var(--color-text-muted);
+        }
+
+        .price-anchor {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+
+        .price-anchor .old-price {
+            font-size: 1.2rem;
+            color: var(--color-text-dim);
+            text-decoration: line-through;
+            text-decoration-color: var(--color-error);
+        }
+
+        .price-anchor .new-price {
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: var(--color-text-main);
+        }
+
+        .price-anchor .tag {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--color-primary);
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 0.8rem;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        /* ===== SECTIONS ===== */
+        section {
+            padding: 100px 0;
+            position: relative;
+            border-top: 1px solid var(--color-border);
+        }
+
+        .section-title {
+            font-size: clamp(2rem, 3.2vw, 3rem);
+            text-align: center;
+            margin-bottom: 16px;
+            color: var(--color-text-main);
+        }
+
+        .section-sub {
+            text-align: center;
+            font-size: 1.1rem;
+            color: var(--color-text-muted);
+            max-width: 600px;
+            margin: 0 auto 48px;
+        }
+
+        /* Como Funciona */
+        .steps-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 24px;
+            margin-top: 20px;
+        }
+
+        .step-card {
+            padding: 40px 32px;
+            text-align: center;
+        }
+
+        .step-card .step-icon {
+            font-size: 2.2rem;
+            color: var(--color-primary);
+            background: rgba(16, 185, 129, 0.1);
+            width: 72px;
+            height: 72px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.2);
+        }
+
+        .step-card h3 {
+            font-size: 1.25rem;
+            margin-bottom: 12px;
+            color: var(--color-text-main);
+        }
+
+        .step-card p {
+            color: var(--color-text-muted);
+            font-size: 0.95rem;
+        }
+
+        /* Estadisticas */
+        #estadisticas {
+            background: radial-gradient(circle at top, rgba(59, 130, 246, 0.1) 0%, transparent 60%);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 32px;
+            max-width: 1000px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .stat-item .number {
+            font-size: 3.5rem;
+            font-weight: 800;
+            color: var(--color-primary);
+            line-height: 1;
+            margin-bottom: 8px;
+        }
+
+        .stat-item .label {
+            font-size: 1rem;
+            color: var(--color-text-muted);
+            font-weight: 500;
+        }
+
+        /* Oferta */
+        .offer-box {
+            padding: 60px 48px;
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .offer-box .badge-scarcity {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--color-warning);
+            font-weight: 700;
+            font-size: 0.8rem;
+            padding: 6px 16px;
+            border-radius: 40px;
+            text-transform: uppercase;
+            margin-bottom: 24px;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .offer-box h2 {
+            font-size: clamp(2rem, 3vw, 2.8rem);
+            margin-bottom: 16px;
+            color: var(--color-text-main);
+        }
+
+        .offer-box p {
+            color: var(--color-text-muted);
+            font-size: 1.1rem;
+            max-width: 560px;
+            margin: 0 auto 32px;
+        }
+
+        .offer-box .timer {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin: 32px 0;
+        }
+
+        .offer-box .timer .unit {
+            background: var(--color-bg-base);
+            border: 1px solid var(--color-border);
+            padding: 16px;
+            border-radius: 12px;
+            min-width: 80px;
+            text-align: center;
+        }
+
+        .offer-box .timer .unit .num {
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: var(--color-text-main);
+            line-height: 1;
+        }
+
+        .offer-box .timer .unit .lbl {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--color-text-dim);
+            margin-top: 4px;
+            font-weight: 600;
+        }
+
+        .offer-box .referral-bonus {
+            background: var(--color-bg-base);
+            border: 1px solid var(--color-border);
+            border-radius: 12px;
+            padding: 16px 24px;
+            margin: 24px auto 32px;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 500;
+            color: var(--color-text-main);
+            font-size: 0.95rem;
+        }
+
+        .offer-box .referral-bonus i {
+            color: var(--color-primary);
+            font-size: 1.2rem;
+        }
+
+        /* CTA */
+        #cta-final {
+            background: radial-gradient(circle at center, rgba(16, 185, 129, 0.15) 0%, transparent 70%);
+            text-align: center;
+            padding: 120px 0;
+        }
+
+        #cta-final h2 {
+            font-size: clamp(2.2rem, 3.6vw, 3.6rem);
+            color: var(--color-text-main);
+            margin-bottom: 20px;
+        }
+
+        #cta-final p {
+            font-size: 1.2rem;
+            color: var(--color-text-muted);
+            max-width: 560px;
+            margin: 0 auto 40px;
+        }
+
+        #cta-final .small-note {
+            margin-top: 24px;
+            font-size: 0.85rem;
+            color: var(--color-text-dim);
+        }
+
+        footer {
+            border-top: 1px solid var(--color-border);
+            text-align: center;
+            padding: 32px 24px;
+            font-size: 0.85rem;
+            color: var(--color-text-dim);
+        }
+
+        footer a {
+            color: var(--color-text-muted);
+        }
+
+        footer a:hover {
+            color: var(--color-text-main);
+        }
+
+        @media (max-width: 1024px) {
+            .hero-left {
+                padding: 48px 40px;
+            }
+
+            .hero-right {
+                padding: 48px 40px;
+            }
+        }
+
+        @media (max-width: 820px) {
+            .hero {
+                grid-template-columns: 1fr;
+            }
+
+            .hero-left {
+                min-height: 50vh;
+                padding: 60px 24px 40px;
+            }
+
+            .hero-right {
+                min-height: auto;
+                padding: 40px 24px 60px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .hero-left .cta-group {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .hero-left .cta-group .btn {
+                justify-content: center;
+            }
+
+            .offer-box {
+                padding: 40px 24px;
+            }
+
+            .offer-box .timer {
+                gap: 8px;
+            }
+
+            .offer-box .timer .unit {
+                min-width: 64px;
+                padding: 12px;
+            }
+
+            .offer-box .timer .unit .num {
+                font-size: 1.6rem;
+            }
+
+            .stats-grid {
+                gap: 24px;
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        /* Scroll Animations */
+        .reveal {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .reveal.visible {
+            opacity: 1;
+            transform: translate(0);
+        }
+
+        .delay-1 {
+            transition-delay: 0.1s;
+        }
+
+        .delay-2 {
+            transition-delay: 0.2s;
+        }
+
+        .delay-3 {
+            transition-delay: 0.3s;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Sticky Navbar -->
+    <nav class="navbar-sticky">
+        <div class="navbar-brand">
+            <img src="assets/Copilot_20260709_045019.png" alt="Wago Logo" />
+            Wago
+        </div>
+        <div class="navbar-menu">
+            <a href="#como-funciona" class="nav-link">Cómo funciona</a>
+            <a href="#oferta" class="nav-link">Precios</a>
+            <a href="/sing" class="nav-link">Iniciar sesión</a>
+            <button class="theme-toggle" id="themeToggle" aria-label="Cambiar tema">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <a href="#" class="float-whatsapp" id="floatWa" aria-label="Contactar por WhatsApp">
+        <i class="fab fa-whatsapp"></i>
+        <span class="tooltip">¡Hola! ¿Hablamos?</span>
+    </a>
+
+    <header class="hero" id="inicio">
+        <div class="hero-left">
+            <div class="badge-top">
+                <span class="badge-icon"><img src="assets/Copilot_20260709_045019.png" alt="Wago" /></span>
+                Wago · Inteligencia Artificial + WhatsApp
+            </div>
+            <h1>Atiende a tus clientes<br /><span class="highlight">mientras tú disfrutas</span> de la vida</h1>
+            <p class="subtitle">Wago responde al instante, filtra preguntas y prepara a tus clientes para que tú solo te
+                enfoques en cerrar la venta.</p>
+            <div class="cta-group">
+                <a href="/sing" class="btn btn-primary"><i class="fas fa-rocket"></i> Quiero mi Wago</a>
+                <a href="#como-funciona" class="btn btn-secondary"><i class="fas fa-play-circle"></i> Ver cómo
+                    funciona</a>
+            </div>
+            <div class="trust-row">
+                <div class="avatars">
+                    <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&crop=face"
+                        alt="Cliente" loading="lazy" />
+                    <img src="https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?w=80&h=80&fit=crop&crop=face"
+                        alt="Cliente" loading="lazy" />
+                    <img src="https://images.unsplash.com/photo-1529333166437-7750a6dd5a70?w=80&h=80&fit=crop&crop=face"
+                        alt="Cliente" loading="lazy" />
+                </div>
+                <div class="trust-text">
+                    <strong>+230</strong> dueños de negocio ya confían en Wago · <i class="fas fa-star"
+                        style="color:#ffebc2;"></i> 4.9/5
+                </div>
+            </div>
+        </div>
+        <div class="hero-right">
+            <div class="bg-image"></div>
+            <div class="content">
+                <div class="label"><i class="fas fa-check-circle" style="margin-right:6px;"></i> Lo que Wago hará por ti
+                </div>
+                <h2>Más tiempo para lo que importa</h2>
+                <ul class="benefits-list">
+                    <li>
+                        <div class="icon"><i class="fas fa-bolt"></i></div>
+                        <div class="text">
+                            <strong>Respuesta inmediata 24/7</strong>
+                            <span>Wago nunca deja a un cliente esperando. Contesta al instante.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="icon"><i class="fas fa-bullseye"></i></div>
+                        <div class="text">
+                            <strong>Filtra y califica clientes</strong>
+                            <span>Wago hace las preguntas adecuadas para que tú solo atiendas a los más
+                                interesados.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="icon"><i class="fas fa-hourglass-half"></i></div>
+                        <div class="text">
+                            <strong>Ahorra horas de atención</strong>
+                            <span>Deja que Wago se encargue de las dudas frecuentes y la agenda. Tú recuperas tu
+                                tiempo.</span>
+                        </div>
+                    </li>
+                </ul>
+                <div class="price-anchor">
+                    <span class="old-price">$2/semana</span>
+                    <span class="new-price">$1/semana</span>
+                    <span class="tag"><i class="fas fa-gift"></i> 1 semana gratis</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <section id="como-funciona">
+        <div class="section-bg"></div>
+        <div class="container">
+            <h2 class="section-title reveal">¿Cómo funciona Wago?</h2>
+            <p class="section-sub reveal delay-1">En 3 pasos, Wago empieza a trabajar para liberar tu tiempo.</p>
+            <div class="steps-grid">
+                <div class="step-card glass-card reveal delay-1">
+                    <div class="step-icon"><i class="fas fa-plug"></i></div>
+                    <h3>1. Conecta tu WhatsApp</h3>
+                    <p>Vincula tu número en minutos. Sin complicaciones técnicas, solo unos clics.</p>
+                </div>
+                <div class="step-card glass-card reveal delay-2">
+                    <div class="step-icon"><i class="fas fa-robot"></i></div>
+                    <h3>2. Entrena a Wago</h3>
+                    <p>Sube tus productos, respuestas frecuentes y horarios. Wago aprende al instante.</p>
+                </div>
+                <div class="step-card glass-card reveal delay-3">
+                    <div class="step-icon"><i class="fas fa-chart-line"></i></div>
+                    <h3>3. Olvídate y dedícate a vender</h3>
+                    <p>Wago atiende, filtra, agenda y prepara a los clientes. Tú solo cierras la venta.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="estadisticas">
+        <div class="section-bg"></div>
+        <div class="container">
+            <h2 class="section-title reveal">Resultados que hablan por sí solos</h2>
+            <p class="section-sub reveal delay-1">Dueños de negocio como tú ya están disfrutando de más tiempo libre con
+                Wago.</p>
+            <div class="stats-grid">
+                <div class="stat-item reveal delay-1">
+                    <div class="number">+200%</div>
+                    <div class="label">Más respuestas en 1 semana</div>
+                </div>
+                <div class="stat-item reveal delay-2">
+                    <div class="number">-15h</div>
+                    <div class="label">Ahorro de tiempo semanal</div>
+                </div>
+                <div class="stat-item reveal delay-3">
+                    <div class="number">24/7</div>
+                    <div class="label">Atención ininterrumpida</div>
+                </div>
+                <div class="stat-item reveal delay-4">
+                    <div class="number">98%</div>
+                    <div class="label">Clientes satisfechos</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="oferta">
+        <div class="section-bg"></div>
+        <div class="container">
+            <div class="offer-box glass-card reveal">
+                <div class="badge-scarcity"><i class="fas fa-clock"></i> Oferta exclusiva</div>
+                <h2>Prueba gratis <span style="color:var(--color-primary);">1 semana</span> de Wago</h2>
+                <p>Disfruta de Wago por solo <strong>$1/semana</strong>.<br />Y si invitas a otros emprendedores,
+                    <strong>duplicamos tu semana gratis</strong> por cada cliente que se una.</p>
+                <div class="timer" id="timer">
+                    <div class="unit">
+                        <div class="num" id="hours">12</div>
+                        <div class="lbl">horas</div>
+                    </div>
+                    <div class="unit">
+                        <div class="num" id="minutes">45</div>
+                        <div class="lbl">min</div>
+                    </div>
+                    <div class="unit">
+                        <div class="num" id="seconds">30</div>
+                        <div class="lbl">seg</div>
+                    </div>
+                </div>
+                <div class="price-row">
+                    <span class="old">$2/semana</span>
+                    <span class="new">$1/semana</span>
+                    <span class="tag"><i class="fas fa-gift"></i> +1 semana gratis</span>
+                </div>
+                <div class="referral-bonus">
+                    <i class="fas fa-user-plus"></i>
+                    <span>Refiere a otro negocio y <strong>duplica tu semana gratis</strong></span>
+                </div>
+                <div>
+                    <a href="/sing" class="btn btn-primary"><i class="fas fa-bolt"></i> Comenzar con Wago</a>
+                </div>
+                <div style="margin-top:12px;font-size:0.85rem;color:var(--color-text-muted);">
+                    <i class="fas fa-users"></i> Quedan <strong id="spotsLeft">47</strong> cupos disponibles
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="cta-final">
+        <div class="section-bg"></div>
+        <div class="container">
+            <h2 class="reveal">¿Listo para <span style="color:var(--color-accent-yellow-light);">recuperar tu
+                    tiempo</span> con Wago?</h2>
+            <p class="reveal delay-1">Empieza hoy con tu asistente automático de WhatsApp. Sin complicaciones, sin
+                esperas.</p>
+            <a href="/sing" class="btn btn-primary reveal delay-2" id="ctaFinalBtn">Probar Wago ahora</a>
+            <div class="small-note reveal delay-3"><i class="fas fa-lock" style="margin-right:6px;"></i> Sin compromiso
+                · Cancelas cuando quieras</div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p style="margin-bottom:4px;">© 2026 · Wago · Hecho con <i class="fas fa-heart"
+                    style="color:var(--color-accent-yellow);"></i> para dueños de negocio</p>
+            <p style="font-size:0.75rem;opacity:0.5;"><a href="#inicio">Inicio</a> · <a href="#como-funciona">Cómo
+                    funciona</a> · <a href="#oferta">Oferta</a></p>
+        </div>
+    </footer>
+
+    <script src="/assets/js/main.js?v=2"></script>
+    <script>
+        (function () {
+            'use strict';
+            const reveals = document.querySelectorAll('.reveal, .reveal-left, .reveal-right');
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                    }
+                });
+            }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+            reveals.forEach(el => observer.observe(el));
+
+            let totalSeconds = 2 * 3600 + 45 * 60 + 30;
+            const hoursEl = document.getElementById('hours');
+            const minutesEl = document.getElementById('minutes');
+            const secondsEl = document.getElementById('seconds');
+            const spotsEl = document.getElementById('spotsLeft');
+
+            function updateTimer() {
+                if (totalSeconds <= 0) return;
+                const h = Math.floor(totalSeconds / 3600);
+                const m = Math.floor((totalSeconds % 3600) / 60);
+                const s = totalSeconds % 60;
+                hoursEl.textContent = String(h).padStart(2, '0');
+                minutesEl.textContent = String(m).padStart(2, '0');
+                secondsEl.textContent = String(s).padStart(2, '0');
+                totalSeconds--;
+            }
+            setInterval(updateTimer, 1000);
+
+            let spots = 47;
+            setInterval(() => {
+                if (spots > 5) {
+                    spots--;
+                    spotsEl.textContent = spots;
+                }
+            }, 8000);
+
+            const floatBtn = document.getElementById('floatWa');
+            floatBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                window.open('https://wa.me/+5351652038?text=Hola%21%20Quiero%20saber%20m%C3%A1s%20sobre%20Wago.', '_blank');
+            });
+
+            const ctaBtns = document.querySelectorAll('.btn-primary, .btn-secondary');
+            ctaBtns.forEach(btn => {
+                btn.addEventListener('click', function (e) {
+                    const href = this.getAttribute('href');
+                    if (href === '#' || href === '#cta-final') {
+                        e.preventDefault();
+                        window.open('https://wa.me/+5351652038?text=Hola%21%20Quiero%20mi%20Wago%20para%20mi%20negocio.', '_blank');
+                    }
+                });
+            });
+
+            const tooltip = document.querySelector('.float-whatsapp .tooltip');
+            if (tooltip) {
+                setInterval(() => {
+                    tooltip.style.opacity = '1';
+                    setTimeout(() => {
+                        tooltip.style.opacity = '0';
+                    }, 3000);
+                }, 7000);
+            }
+
+            // Theme Toggle Logic
+            const themeToggleBtn = document.getElementById('themeToggle');
+            const icon = themeToggleBtn.querySelector('i');
+
+            // Check local storage
+            const currentTheme = localStorage.getItem('theme') || 'dark';
+            if (currentTheme === 'light') {
+                document.documentElement.classList.add('light-theme');
+                icon.classList.replace('fa-moon', 'fa-sun');
+            }
+
+            themeToggleBtn.addEventListener('click', () => {
+                document.documentElement.classList.toggle('light-theme');
+                if (document.documentElement.classList.contains('light-theme')) {
+                    localStorage.setItem('theme', 'light');
+                    icon.classList.replace('fa-moon', 'fa-sun');
+                } else {
+                    localStorage.setItem('theme', 'dark');
+                    icon.classList.replace('fa-sun', 'fa-moon');
+                }
+            });
+        })();
+    </script>
+</body>
+
+</html>

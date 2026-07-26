@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Registro · Wago</title>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <link rel="stylesheet" href="/assets/css/styles.css?v=3" />
+    <style>
+        body {
+            background: radial-gradient(circle at top, rgba(16, 185, 129, 0.05) 0%, var(--color-bg-base) 60%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .login-wrapper {
+            width: 100%;
+            max-width: 440px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .brand img {
+            height: 40px;
+            width: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .brand span {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--color-text-main);
+        }
+
+        .brand span small {
+            font-weight: 400;
+            color: var(--color-text-muted);
+            font-size: 0.9rem;
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 20px 0 6px;
+        }
+
+        .sub {
+            color: var(--color-text-muted);
+            font-size: 0.95rem;
+            margin-bottom: 24px;
+        }
+
+        .btn-login {
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .register-link {
+            margin-top: 24px;
+            text-align: center;
+            font-size: 0.95rem;
+            color: var(--color-text-muted);
+        }
+
+        .register-link a {
+            color: var(--color-primary);
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .register-link a:hover {
+            text-decoration: underline;
+        }
+
+        .back-home {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--color-text-muted);
+            font-size: 0.9rem;
+            margin-bottom: 16px;
+            text-decoration: none;
+        }
+
+        .back-home:hover {
+            color: var(--color-primary);
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Theme Toggle -->
+    <button class="theme-toggle" id="themeToggle" aria-label="Cambiar tema"
+        style="position:fixed; top:24px; right:24px; z-index:100;">
+        <i class="fas fa-moon"></i>
+    </button>
+
+    <div class="login-wrapper glass-card reveal">
+        <div class="premium-card-body">
+            <a href="/" class="back-home"><i class="fas fa-arrow-left"></i> Volver</a>
+            <div class="brand">
+                <img src="assets/Copilot_20260709_045019.png" alt="Wago" />
+                <span>Wago <small>· registro</small></span>
+            </div>
+            <h2>Crear cuenta</h2>
+            <p class="sub">Únete para empezar a automatizar.</p>
+            <form id="regForm">
+                <div class="form-group">
+                    <label for="regUser">Nombre de usuario</label>
+                    <input type="text" id="regUser" class="form-control" placeholder="Ej: micuenta" required />
+                </div>
+                <div class="form-group">
+                    <label for="regEmail">Correo electrónico</label>
+                    <input type="email" id="regEmail" class="form-control" placeholder="Ej: hola@ejemplo.com"
+                        required />
+                </div>
+                <div class="form-group">
+                    <label for="regPhone">Teléfono</label>
+                    <input type="text" id="regPhone" class="form-control" placeholder="+123456789" required />
+                </div>
+                <div class="form-group">
+                    <label for="regPass">Contraseña</label>
+                    <input type="password" id="regPass" class="form-control" placeholder="Mínimo 6 caracteres"
+                        required />
+                </div>
+                <div class="form-group">
+                    <label for="regConfirm">Confirmar contraseña</label>
+                    <input type="password" id="regConfirm" class="form-control" placeholder="Repite la contraseña"
+                        required />
+                </div>
+                <button type="submit" class="btn btn-primary btn-login">
+                    <i class="fas fa-user-plus"></i> Registrarse
+                </button>
+            </form>
+            <a href="/auth/google/login">Registrate con Google</a>
+            <div class="register-link">
+                ¿Ya tienes cuenta? <a href="/sing">Inicia sesión</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="/assets/js/main.js?v=2"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const loginWrapper = document.querySelector('.login-wrapper');
+            loginWrapper.classList.add('visible');
+        });
+
+        function getCsrfToken() {
+            const match = document.cookie.match(new RegExp('(^| )csrf_token=([^;]+)'));
+            return match ? match[2] : '';
+        }
+
+        document.getElementById('regForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const u = document.getElementById('regUser').value.trim();
+            const em = document.getElementById('regEmail').value.trim();
+            const ph = document.getElementById('regPhone').value.trim();
+            const p = document.getElementById('regPass').value.trim();
+            const conf = document.getElementById('regConfirm').value.trim();
+
+            if (!u || !em || !ph || !p || !conf) {
+                Toast.show('Todos los campos son obligatorios', 'error');
+                return;
+            }
+            if (p !== conf) {
+                Toast.show('Las contraseñas no coinciden', 'error');
+                return;
+            }
+            if (p.length < 6) {
+                Toast.show('La contraseña debe tener al menos 6 caracteres', 'error');
+                return;
+            }
+
+            try {
+                const r = await fetch('/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': getCsrfToken()
+                    },
+                    body: JSON.stringify({ username: u, email: em, phone: ph, password: p })
+                });
+                const data = await r.json();
+
+                if (r.ok) {
+                    Toast.show('Registro exitoso. Serás redirigido...', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/sing';
+                    }, 1200);
+                } else {
+                    Toast.show(data.error || 'No se pudo crear la cuenta', 'error');
+                }
+            } catch (err) {
+                Toast.show('Error de red al intentar registrar', 'error');
+            }
+        });
+
+        document.querySelectorAll('input').forEach(inp => inp.addEventListener('keydown', e => {
+            if (e.key === 'Enter') document.getElementById('regForm').dispatchEvent(new Event('submit'));
+        }));
+
+        // Theme Toggle Logic
+        const themeToggleBtn = document.getElementById('themeToggle');
+        if (themeToggleBtn) {
+            const icon = themeToggleBtn.querySelector('i');
+            const currentTheme = localStorage.getItem('theme') || 'dark';
+            if (currentTheme === 'light') {
+                document.documentElement.classList.add('light-theme');
+                icon.classList.replace('fa-moon', 'fa-sun');
+            }
+            themeToggleBtn.addEventListener('click', () => {
+                document.documentElement.classList.toggle('light-theme');
+                if (document.documentElement.classList.contains('light-theme')) {
+                    localStorage.setItem('theme', 'light');
+                    icon.classList.replace('fa-moon', 'fa-sun');
+                } else {
+                    localStorage.setItem('theme', 'dark');
+                    icon.classList.replace('fa-sun', 'fa-moon');
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>

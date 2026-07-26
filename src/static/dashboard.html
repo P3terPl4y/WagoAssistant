@@ -1,0 +1,1382 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard · Wago</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <link rel="stylesheet" href="/assets/css/styles.css?v=3" />
+    <style>
+        /* ===== BASE ===== */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --sidebar-width: 260px;
+            --sidebar-collapsed: 0px;
+            --header-height: 4rem;
+            --radius-md: 0.75rem;
+            --transition-speed: 0.3s;
+        }
+
+        body {
+            background: radial-gradient(circle at top left, rgba(16, 185, 129, 0.05) 0%, var(--color-bg-base) 60%);
+            min-height: 100vh;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ===== DASHBOARD WRAPPER ===== */
+        .dashboard-container {
+            display: flex;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        /* ===== SIDEBAR (desplegable) ===== */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: var(--sidebar-width);
+            background: var(--color-bg-card);
+            border-right: 1px solid var(--color-border);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            z-index: 1000;
+            transform: translateX(0);
+            transition: transform var(--transition-speed) ease, box-shadow var(--transition-speed) ease;
+            overflow-y: auto;
+            box-shadow: 0 0 2rem rgba(0, 0, 0, 0.15);
+        }
+
+        /* Estado colapsado */
+        .sidebar.collapsed {
+            transform: translateX(calc(-1 * var(--sidebar-width) - 0.5rem));
+            box-shadow: none;
+        }
+
+        .sidebar-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 2.5rem;
+            flex-shrink: 0;
+        }
+
+        .sidebar-brand img {
+            height: 2.5rem;
+            width: 2.5rem;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .sidebar-brand span {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--color-text-main);
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            color: var(--color-text-muted);
+            text-decoration: none;
+            border-radius: var(--radius-md);
+            margin-bottom: 0.5rem;
+            transition: all 0.2s ease;
+            background: transparent;
+            border: none;
+            width: 100%;
+            text-align: left;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .nav-item:hover,
+        .nav-item.active {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--color-primary);
+        }
+
+        .sidebar-spacer {
+            flex: 1;
+        }
+
+        /* ===== OVERLAY (fondo oscuro al abrir sidebar en móvil) ===== */
+        .sidebar-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 999;
+            background: rgba(0, 0, 0, 0.4);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity var(--transition-speed) ease, visibility var(--transition-speed) ease;
+            pointer-events: none;
+        }
+
+        .sidebar-overlay.active {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: all;
+        }
+
+        /* ===== MAIN CONTENT ===== */
+        .main-content {
+            flex: 1;
+            padding: 1.5rem 2rem;
+            overflow-y: auto;
+            min-width: 0;
+            margin-left: var(--sidebar-width);
+            transition: margin-left var(--transition-speed) ease;
+            width: 100%;
+        }
+
+        .main-content.expanded {
+            margin-left: 0;
+        }
+
+        /* ===== HEADER ===== */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+            min-height: var(--header-height);
+            position: relative;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .header-logo-small {
+            display: none;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .header-logo-small img {
+            height: 2.2rem;
+            width: 2.2rem;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .header-logo-small span {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--color-text-main);
+        }
+
+        /* Botón hamburguesa */
+        .hamburger-btn {
+            background: transparent;
+            border: none;
+            color: var(--color-text-main);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+            border-radius: var(--radius-md);
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 2.5rem;
+            height: 2.5rem;
+        }
+
+        .hamburger-btn:hover {
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .header-title h1 {
+            font-size: 2rem;
+            margin: 0 0 0.25rem;
+        }
+
+        .header-title p {
+            color: var(--color-text-muted);
+            margin: 0;
+            font-size: 0.95rem;
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .user-avatar {
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 50%;
+            background: var(--color-primary);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+
+        .theme-toggle {
+            background: transparent;
+            border: none;
+            color: var(--color-text-muted);
+            font-size: 1.25rem;
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+            border-radius: var(--radius-md);
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 2.5rem;
+            height: 2.5rem;
+        }
+
+        .theme-toggle:hover {
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        /* ===== GRID ===== */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .grid .status-card {
+            grid-column: 1 / -1;
+        }
+
+        /* ===== TARJETAS ===== */
+        .glass-card {
+            background: var(--color-bg-card);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            border: 1px solid var(--color-border);
+            box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.06);
+            transition: box-shadow 0.2s;
+        }
+
+        .glass-card:hover {
+            box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.08);
+        }
+
+        .glass-card h3 {
+            margin-top: 0;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .glass-card .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .glass-card .form-control {
+            width: 100%;
+            padding: 0.6rem 0.8rem;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--color-border);
+            background: var(--color-bg-input);
+            color: var(--color-text-main);
+            font-size: 0.95rem;
+            transition: border-color 0.2s;
+            box-sizing: border-box;
+        }
+
+        .glass-card .form-control:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+        }
+
+        .glass-card .btn {
+            width: 100%;
+            padding: 0.6rem 1rem;
+            border-radius: var(--radius-md);
+            border: none;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--color-primary);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            filter: brightness(1.1);
+            transform: translateY(-1px);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 2px solid var(--color-primary);
+            color: var(--color-primary);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(16, 185, 129, 0.08);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* ===== BADGES ===== */
+        .status-badge {
+            display: inline-block;
+            padding: 0.2rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .status-badge.active {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--color-primary);
+        }
+
+        .status-badge.inactive {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .status-badge.pending {
+            background: rgba(234, 179, 8, 0.2);
+            color: #eab308;
+        }
+
+        /* ===== STATUS INFO ===== */
+        .status-info {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin: 0.75rem 0;
+        }
+
+        .status-info-item {
+            flex: 1 1 120px;
+            font-size: 0.95rem;
+        }
+
+        .bot-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .bot-actions .btn {
+            flex: 1 1 160px;
+            min-width: 120px;
+        }
+
+        /* ===== QR ===== */
+        .qr-container {
+            text-align: center;
+            padding: 1.25rem;
+            background: #fff;
+            border-radius: var(--radius-md);
+            display: none;
+            margin-top: 1rem;
+            border: 1px solid var(--color-border);
+        }
+
+        .qr-container img {
+            max-width: 100%;
+            max-height: 240px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .qr-container img:hover {
+            transform: scale(1.02);
+        }
+
+        .qr-link {
+            display: block;
+            margin-top: 0.75rem;
+            font-size: 0.85rem;
+            color: var(--color-primary);
+            word-break: break-all;
+            text-decoration: underline;
+            cursor: pointer;
+            padding: 0.4rem 0.8rem;
+            border-radius: var(--radius-md);
+            background: rgba(16, 185, 129, 0.06);
+            transition: background 0.2s;
+            border: 1px dashed var(--color-border);
+        }
+
+        .qr-link:hover {
+            background: rgba(16, 185, 129, 0.12);
+        }
+
+        .qr-link i {
+            margin-right: 0.4rem;
+        }
+
+        #loader {
+            display: none;
+            text-align: center;
+            padding: 1.25rem;
+            color: var(--color-text-muted);
+        }
+
+        #loader i {
+            font-size: 2rem;
+        }
+
+        /* ===== TOAST ===== */
+        .toast-container {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            max-width: 90vw;
+            width: 360px;
+        }
+
+        .toast {
+            padding: 0.75rem 1.25rem;
+            border-radius: var(--radius-md);
+            background: var(--color-bg-card);
+            border-left: 4px solid var(--color-primary);
+            box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.15);
+            font-size: 0.9rem;
+            animation: slideUp 0.3s ease;
+            color: var(--color-text-main);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            border: 1px solid var(--color-border);
+        }
+
+        .toast.success {
+            border-left-color: var(--color-primary);
+        }
+
+        .toast.error {
+            border-left-color: #ef4444;
+        }
+
+        .toast.warning {
+            border-left-color: #eab308;
+        }
+
+        .toast.info {
+            border-left-color: #3b82f6;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ===== SCROLLBAR ===== */
+        .sidebar::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: var(--color-border);
+            border-radius: 4px;
+        }
+
+        /* ===== SIN MEDIA QUERIES — todo con medidas relativas ===== */
+
+        /* Ajuste para el logo en header cuando sidebar está colapsado */
+        .sidebar.collapsed~.main-content .header-logo-small {
+            display: flex;
+        }
+
+        /* Pero también queremos que el logo del sidebar se oculte cuando colapsado */
+
+
+        /* Para pantallas donde el sidebar está colapsado por defecto (usando JS) */
+        /* no usamos media queries, usamos clases */
+
+        /* Ajuste fino: cuando el sidebar está colapsado, el logo en sidebar no se ve */
+        /* pero el logo en header sí */
+
+        /* ===== RESPONSIVE CON MEDIDAS RELATIVAS ===== */
+        /* Usamos clamp(), min(), max() y unidades relativas */
+
+        .main-content {
+            padding: clamp(0.75rem, 3vw, 2rem);
+        }
+
+        .header-title h1 {
+            font-size: clamp(1.25rem, 4vw, 2rem);
+        }
+
+        .grid {
+            gap: clamp(0.75rem, 2vw, 1.5rem);
+        }
+
+        .glass-card {
+            padding: clamp(1rem, 2vw, 1.5rem);
+        }
+
+        .status-info-item {
+            flex: 1 1 clamp(80px, 15vw, 140px);
+        }
+
+        .bot-actions .btn {
+            flex: 1 1 clamp(100px, 20vw, 180px);
+            min-width: clamp(80px, 15vw, 120px);
+        }
+
+        /* ===== LOADING SPINNER EN BOTONES ===== */
+        .btn .spinner {
+            display: none;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+
+        .btn.loading .spinner {
+            display: inline-block;
+        }
+
+        .btn.loading .btn-text {
+            opacity: 0.7;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* ===== PASSWORD STRENGTH (opcional) ===== */
+        .password-strength {
+            height: 4px;
+            border-radius: 4px;
+            margin-top: 0.4rem;
+            background: var(--color-border);
+            overflow: hidden;
+            transition: width 0.3s;
+        }
+
+        .password-strength-bar {
+            height: 100%;
+            width: 0%;
+            border-radius: 4px;
+            transition: width 0.3s, background 0.3s;
+        }
+
+        /* ===== COPIA DE SEGURIDAD ===== */
+        .copy-feedback {
+            font-size: 0.8rem;
+            color: var(--color-text-muted);
+            margin-left: 0.4rem;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .copy-feedback.show {
+            opacity: 1;
+        }
+
+        /* ===== BOTÓN DE CIERRE DEL SIDEBAR (dentro) ===== */
+        .sidebar-close-btn {
+            display: none;
+            align-self: flex-end;
+            background: transparent;
+            border: none;
+            color: var(--color-text-muted);
+            font-size: 1.3rem;
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+            border-radius: var(--radius-md);
+            transition: background 0.2s;
+            margin-bottom: 0.5rem;
+        }
+
+        .sidebar-close-btn:hover {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+        }
+
+        /* Mostrar el botón de cierre solo cuando el sidebar está colapsado (visible) */
+        /* pero queremos que siempre esté visible en móvil */
+        /* lo mostramos siempre, pero en desktop lo ocultamos con una clase */
+        /* como no usamos media queries, usamos JS para manejar la visibilidad */
+        /* por defecto lo mostramos, y lo ocultamos con JS cuando el sidebar está expandido en desktop */
+        /* mejor: lo mostramos siempre, y lo ocultamos con una clase desde JS */
+        .sidebar-close-btn.hidden-desktop {
+            display: none;
+        }
+
+        /* En móvil (detectado por JS) lo mostramos */
+        .sidebar-close-btn {
+            display: flex;
+        }
+
+        /* Ajuste para que el logo del sidebar sea más pequeño en colapsado */
+        /* no aplicamos nada extra */
+    </style>
+</head>
+
+<body>
+
+    <!-- ===== OVERLAY ===== -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- ===== TOAST CONTAINER ===== -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- ===== DASHBOARD ===== -->
+    <div class="dashboard-container">
+
+        <!-- ===== SIDEBAR ===== -->
+        <aside class="sidebar" id="sidebar">
+            <button class="sidebar-close-btn" id="sidebarCloseBtn" aria-label="Cerrar menú">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="sidebar-brand">
+                <img src="assets/Copilot_20260709_045019.png" alt="Wago" />
+                <span>Wago</span>
+            </div>
+            <a href="#" class="nav-item active"><i class="fas fa-home"></i> Inicio</a>
+            <a href="#" class="nav-item"><i class="fas fa-robot"></i> Mis Bots</a>
+            <a href="/admin" class="nav-item" id="adminLink" style="display: none;"><i class="fas fa-shield-alt"></i>
+                Admin Panel</a>
+            <div class="sidebar-spacer"></div>
+            <button id="logoutBtn" class="nav-item">
+                <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+            </button>
+        </aside>
+
+        <!-- ===== MAIN CONTENT ===== -->
+        <main class="main-content" id="mainContent">
+
+            <!-- ===== HEADER ===== -->
+            <header class="header">
+                <div class="header-left">
+                    <button class="hamburger-btn" id="hamburgerBtn" aria-label="Abrir menú">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="header-logo-small" id="headerLogoSmall">
+                        <img src="assets/Copilot_20260709_045019.png" alt="Wago" />
+                        <span>Wago</span>
+                    </div>
+                </div>
+                <div class="header-title">
+                    <h1>Bienvenido, <span id="displayUser"></span></h1>
+                    <p>Gestiona tu asistente de WhatsApp automatizado</p>
+                </div>
+                <div class="user-profile">
+                    <button class="theme-toggle" id="themeToggle" aria-label="Cambiar tema">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                    <div class="user-avatar" id="avatarInitial">U</div>
+                    <div>
+                        <div style="font-weight:600;" id="profileEmail"></div>
+                        <div style="font-size:0.85rem; color:var(--color-text-muted);" id="profileRole"></div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- ===== GRID ===== -->
+            <div class="grid">
+
+                <!-- ===== STATUS CARD ===== -->
+                <div class="glass-card premium-card-body status-card">
+                    <h3><i class="fas fa-robot"></i> Estado del Bot</h3>
+                    <div class="status-info">
+                        <div class="status-info-item">
+                            Conexión: <span id="connStatus" class="status-badge inactive">Desconectado</span>
+                        </div>
+                        <div class="status-info-item">
+                            Suscripción: <span id="payStatus"
+                                style="text-transform: capitalize; font-weight:600;">Free</span>
+                        </div>
+                        <div class="status-info-item">
+                            Cuota diaria: <span id="usageStats" style="font-weight:600;">0 / 10 mensajes</span>
+                        </div>
+                    </div>
+
+                    <div class="bot-actions">
+                        <div id="botControls" style="flex:1;">
+                            <button id="startBotBtn" class="btn btn-primary" style="width:100%;">
+                                <i class="fas fa-qrcode"></i>
+                                <span class="btn-text">Conectar WhatsApp</span>
+                                <span class="spinner"></span>
+                            </button>
+                        </div>
+                        <div id="upgradeBtnContainer" style="flex:1;">
+                            <button id="upgradeBtn" class="btn btn-secondary"
+                                style="width:100%; border-color: var(--color-primary); color: var(--color-primary);">
+                                <i class="fas fa-crown"></i>
+                                <span class="btn-text">Hacer Upgrade</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="loader"><i class="fas fa-spinner fa-spin fa-2x"></i><br><small>Generando QR...</small>
+                    </div>
+
+                    <div id="qrBox" class="qr-container">
+                        <img id="qrImage" src="" alt="WhatsApp QR Code" title="Haz clic para abrir el QR" />
+                        <p style="color:#333; margin-top:0.5rem; font-size:0.9rem;">
+                            Escanea en WhatsApp > Dispositivos Vinculados
+                        </p>
+                        <!-- Enlace clickeable con el QR codificado -->
+                        <a id="qrLink" class="qr-link" href="#" target="_blank" rel="noopener noreferrer">
+                            <i class="fas fa-external-link-alt"></i> Abrir código QR
+                        </a>
+                        <button id="copyQrBtn" class="btn btn-secondary"
+                            style="margin-top:0.5rem; padding:0.3rem 0.8rem; font-size:0.8rem; width:auto; border-width:1px;">
+                            <i class="fas fa-copy"></i> Copiar datos QR
+                        </button>
+                        <span class="copy-feedback" id="copyFeedback">✓ Copiado</span>
+                    </div>
+                </div>
+
+                <!-- ===== PROMPT CARD ===== -->
+                <div class="glass-card premium-card-body">
+                    <h3><i class="fas fa-brain"></i> Configuración de IA</h3>
+                    <p style="color:var(--color-text-muted); font-size:0.9rem;">Instrucciones para el asistente.</p>
+                    <form id="promptForm">
+                        <div class="form-group">
+                            <textarea id="promptText" class="form-control" rows="5" style="resize:vertical;"
+                                placeholder="Ej: Eres un asistente de ventas para Wago..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary" id="promptSubmitBtn">
+                            <span class="btn-text">Guardar Cambios</span>
+                            <span class="spinner"></span>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- ===== PHONE CARD ===== -->
+                <div class="glass-card premium-card-body">
+                    <h3><i class="fas fa-phone"></i> Configuración de teléfono</h3>
+                    <form id="phoneForm">
+                        <div class="form-group">
+                            <input id="phoneText" class="form-control" type="tel" placeholder="+12345678" />
+                        </div>
+                        <button type="submit" class="btn btn-primary" id="phoneSubmitBtn">
+                            <span class="btn-text">Guardar Cambios</span>
+                            <span class="spinner"></span>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- ===== PASSWORD CARD ===== -->
+                <div class="glass-card premium-card-body">
+                    <h3><i class="fas fa-lock"></i> Configuración de contraseña</h3>
+                    <form id="passwordForm">
+                        <div class="form-group">
+                            <input id="passwordText" class="form-control" type="text"
+                                placeholder="Nueva contraseña..." />
+                            <div class="password-strength">
+                                <div class="password-strength-bar" id="passwordStrengthBar"></div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary" id="passwordSubmitBtn">
+                            <span class="btn-text">Guardar Cambios</span>
+                            <span class="spinner"></span>
+                        </button>
+                    </form>
+                </div>
+
+            </div><!-- /grid -->
+        </main>
+    </div><!-- /dashboard-container -->
+
+    <script src="/assets/js/main.js?v=2"></script>
+    <script>
+        // ============================================================
+        //  TOAST SYSTEM (mejorado)
+        // ============================================================
+
+        // ============================================================
+        //  CSRF
+        // ============================================================
+        function getCsrfToken() {
+            const match = document.cookie.match(new RegExp('(^| )csrf_token=([^;]+)'));
+            return match ? match[2] : '';
+        }
+
+        // ============================================================
+        //  SIDEBAR TOGGLE (CORREGIDO - SIN MEDIA QUERIES)
+        // ============================================================
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        const hamburgerBtn = document.getElementById('hamburgerBtn');
+        const sidebarCloseBtn = document.getElementById('sidebarCloseBtn');
+        const mainContent = document.getElementById('mainContent');
+        const headerLogoSmall = document.getElementById('headerLogoSmall');
+
+        let sidebarOpen = true;      // estado actual (abierto/cerrado)
+        let isMobile = false;        // modo móvil
+        let userToggled = false;     // indica si el usuario ha cambiado manualmente
+
+        function detectMobile() {
+            return window.innerWidth < 700;
+        }
+
+        function applySidebarState(open) {
+            if (open) {
+                sidebar.classList.remove('collapsed');
+                mainContent.classList.remove('expanded');
+                headerLogoSmall.style.display = 'none';
+                if (isMobile) {
+                    overlay.classList.add('active');
+                    sidebarCloseBtn.style.display = 'flex';
+                } else {
+                    overlay.classList.remove('active');
+                    sidebarCloseBtn.style.display = 'none';
+                }
+            } else {
+                sidebar.classList.add('collapsed');
+                mainContent.classList.add('expanded');
+                headerLogoSmall.style.display = 'flex';
+                overlay.classList.remove('active');
+                if (isMobile) {
+                    sidebarCloseBtn.style.display = 'flex';
+                } else {
+                    sidebarCloseBtn.style.display = 'none';
+                }
+            }
+            sidebarOpen = open;
+        }
+
+        function toggleSidebar() {
+            userToggled = true;
+            applySidebarState(!sidebarOpen);
+        }
+
+        function closeSidebar() {
+            if (sidebarOpen) {
+                userToggled = true;
+                applySidebarState(false);
+            }
+        }
+
+        function openSidebar() {
+            if (!sidebarOpen) {
+                userToggled = true;
+                applySidebarState(true);
+            }
+        }
+
+        // Inicializar según el tamaño actual
+        function initSidebar() {
+            isMobile = detectMobile();
+            const initialOpen = !isMobile; // en desktop abierto, en móvil cerrado
+            applySidebarState(initialOpen);
+            userToggled = false;
+        }
+
+        // Manejar cambios de tamaño (sin media queries)
+        let resizeTimeout;
+        function handleResize() {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                const newMobile = detectMobile();
+                if (newMobile !== isMobile) {
+                    isMobile = newMobile;
+                    if (!userToggled) {
+                        const newOpen = !isMobile;
+                        applySidebarState(newOpen);
+                    } else {
+                        // Ajustar overlay y botón de cierre manteniendo el estado actual
+                        if (sidebarOpen) {
+                            if (isMobile) {
+                                overlay.classList.add('active');
+                                sidebarCloseBtn.style.display = 'flex';
+                            } else {
+                                overlay.classList.remove('active');
+                                sidebarCloseBtn.style.display = 'none';
+                            }
+                        } else {
+                            headerLogoSmall.style.display = 'flex';
+                            overlay.classList.remove('active');
+                            if (isMobile) {
+                                sidebarCloseBtn.style.display = 'flex';
+                            } else {
+                                sidebarCloseBtn.style.display = 'none';
+                            }
+                        }
+                    }
+                }
+            }, 200);
+        }
+
+        // Eventos
+        hamburgerBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleSidebar();
+        });
+
+        sidebarCloseBtn.addEventListener('click', () => {
+            closeSidebar();
+        });
+
+        overlay.addEventListener('click', () => {
+            closeSidebar();
+        });
+
+        // Cerrar con Escape (solo en móvil)
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && isMobile && sidebarOpen) {
+                closeSidebar();
+            }
+        });
+
+        // Inicializar y escuchar resize
+        window.addEventListener('load', initSidebar);
+        window.addEventListener('resize', handleResize);
+
+        // ============================================================
+        //  THEME TOGGLE
+        // ============================================================
+        const themeToggleBtn = document.getElementById('themeToggle');
+        if (themeToggleBtn) {
+            const icon = themeToggleBtn.querySelector('i');
+            const currentTheme = localStorage.getItem('theme') || 'dark';
+            if (currentTheme === 'light') {
+                document.documentElement.classList.add('light-theme');
+                icon.classList.replace('fa-moon', 'fa-sun');
+            }
+            themeToggleBtn.addEventListener('click', () => {
+                document.documentElement.classList.toggle('light-theme');
+                if (document.documentElement.classList.contains('light-theme')) {
+                    localStorage.setItem('theme', 'light');
+                    icon.classList.replace('fa-moon', 'fa-sun');
+                } else {
+                    localStorage.setItem('theme', 'dark');
+                    icon.classList.replace('fa-sun', 'fa-moon');
+                }
+            });
+        }
+
+        // ============================================================
+        //  LOGOUT
+        // ============================================================
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            try {
+                await fetch('/logout', { method: 'POST', headers: { 'X-CSRF-Token': getCsrfToken() } });
+                window.location.href = '/sing';
+            } catch (e) {
+                window.location.href = '/sing';
+            }
+        });
+
+        // ============================================================
+        //  INICIALIZAR UI
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof window.userDisplay !== 'undefined') {
+                document.getElementById('displayUser').textContent = window.userDisplay;
+                document.getElementById('avatarInitial').textContent = window.userDisplay.charAt(0).toUpperCase();
+                document.getElementById('profileEmail').textContent = window.userEmail;
+                document.getElementById('profileRole').textContent = window.userRole;
+                document.getElementById('payStatus').textContent = (window.tier === 'pro' || window.tier === 'enterprise') ?
+                    window.tier.toUpperCase() : 'FREE';
+
+                let limitText = window.msgLimit === -1 ? '∞' : window.msgLimit;
+                document.getElementById('usageStats').textContent = `${window.usage} / ${limitText} mensajes`;
+
+                if (window.tier !== 'free') {
+                    document.getElementById('upgradeBtnContainer').style.display = 'none';
+                }
+
+                if (window.userRole === 'admin') {
+                    document.getElementById('adminLink').style.display = 'flex';
+                }
+            }
+            checkBotStatus();
+
+            // Cargar prompt actual si existe
+            if (window.botID) {
+                fetch(`/bot/${window.botID}/prompt`, {
+                    headers: { 'X-CSRF-Token': getCsrfToken() }
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.prompt) {
+                            document.getElementById('promptText').value = data.prompt;
+                        }
+                    })
+                    .catch(() => { });
+            }
+
+            // Cargar teléfono actual
+            if (window.userID) {
+                fetch(`/user/phone`, {
+                    headers: { 'X-CSRF-Token': getCsrfToken() }
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.phone) {
+                            document.getElementById('phoneText').value = data.phone;
+                        }
+                    })
+                    .catch(() => { });
+            }
+        });
+
+        // ============================================================
+        //  BOT STATUS
+        // ============================================================
+        let pollingInterval = null;
+
+        async function checkBotStatus() {
+            if (!window.botID) return;
+            try {
+                const res = await fetch(`/bot/${window.botID}/status`, {
+                    headers: { 'X-CSRF-Token': getCsrfToken() }
+                });
+                const data = await res.json();
+                updateStatusBadge(data.status === 'active');
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function updateStatusBadge(isActive) {
+            const badge = document.getElementById('connStatus');
+            const btn = document.getElementById('startBotBtn');
+            const qrBox = document.getElementById('qrBox');
+            if (isActive) {
+                badge.textContent = 'Conectado';
+                badge.className = 'status-badge active';
+                btn.style.display = 'block';
+                btn.innerHTML = `<i class="fas fa-check-circle"></i> <span class="btn-text">Conectado</span>`;
+                btn.disabled = true;
+                qrBox.style.display = 'none';
+                if (pollingInterval) {
+                    clearInterval(pollingInterval);
+                    pollingInterval = null;
+                }
+            } else {
+                badge.textContent = 'Desconectado';
+                badge.className = 'status-badge inactive';
+                btn.style.display = 'block';
+                btn.innerHTML = `<i class="fas fa-qrcode"></i> <span class="btn-text">Conectar WhatsApp</span><span class="spinner"></span>`;
+                btn.disabled = false;
+            }
+        }
+
+        // ============================================================
+        //  CONNECT BOT (con manejo de QR y enlace)
+        // ============================================================
+        document.getElementById('startBotBtn').addEventListener('click', async function () {
+            const btn = this;
+            const loader = document.getElementById('loader');
+            const qrBox = document.getElementById('qrBox');
+            const qrImg = document.getElementById('qrImage');
+            const qrLink = document.getElementById('qrLink');
+            const copyBtn = document.getElementById('copyQrBtn');
+            const copyFeedback = document.getElementById('copyFeedback');
+
+            // Deshabilitar botón mientras se procesa
+            btn.disabled = true;
+            btn.classList.add('loading');
+            loader.style.display = 'block';
+            qrBox.style.display = 'none';
+            copyFeedback.classList.remove('show');
+
+            try {
+                const res = await fetch('/start-bot', {
+                    method: 'POST',
+                    headers: { 'X-CSRF-Token': getCsrfToken() }
+                });
+                const data = await res.json();
+                loader.style.display = 'none';
+                btn.classList.remove('loading');
+                btn.disabled = false;
+
+                if (data.status === 'qr') {
+                    const base64Qr = data.qr;
+                    // Mostrar QR
+                    qrImg.src = 'data:image/png;base64,' + base64Qr;
+                    // Construir enlace clickeable (data URI)
+                    const dataUri = 'data:image/png;base64,' + base64Qr;
+                    qrLink.href = dataUri;
+                    qrLink.setAttribute('download', 'wago-qr.png');
+                    qrLink.innerHTML = `<i class="fas fa-external-link-alt"></i> Abrir / Descargar QR`;
+                    qrBox.style.display = 'block';
+
+                    // Botón copiar datos QR
+                    copyBtn.onclick = function () {
+                        navigator.clipboard.writeText(base64Qr).then(() => {
+                            copyFeedback.classList.add('show');
+                            setTimeout(() => copyFeedback.classList.remove('show'), 2000);
+                        }).catch(() => {
+                            // Fallback
+                            const textarea = document.createElement('textarea');
+                            textarea.value = base64Qr;
+                            document.body.appendChild(textarea);
+                            textarea.select();
+                            document.execCommand('copy');
+                            textarea.remove();
+                            copyFeedback.classList.add('show');
+                            setTimeout(() => copyFeedback.classList.remove('show'), 2000);
+                        });
+                    };
+
+                    // Hacer click en la imagen para abrir en nueva pestaña
+                    qrImg.onclick = function () {
+                        window.open(dataUri, '_blank');
+                    };
+
+                    // Iniciar polling
+                    if (!pollingInterval) {
+                        pollingInterval = setInterval(async () => {
+                            try {
+                                const st = await fetch(`/bot/${window.botID}/status`, {
+                                    headers: { 'X-CSRF-Token': getCsrfToken() }
+                                });
+                                const std = await st.json();
+                                if (std.status === 'active') {
+                                    updateStatusBadge(true);
+                                    Toast.show("¡WhatsApp Vinculado Exitosamente!", "success");
+                                    clearInterval(pollingInterval);
+                                    pollingInterval = null;
+                                    qrBox.style.display = 'none';
+                                }
+                            } catch (err) { /* ignorar */ }
+                        }, 4000);
+                    }
+                } else if (data.status === 'session_exists') {
+                    updateStatusBadge(true);
+                    Toast.show("Bot ya estaba conectado", "success");
+                } else if (data.status === 'timeout') {
+                    Toast.show("El código QR ha expirado. Intenta de nuevo.", "warning");
+                    updateStatusBadge(false);
+                } else if (data.status === 'pending_payment') {
+                    Toast.show("Pago pendiente. Espera confirmación del administrador.", "info");
+                    updateStatusBadge(false);
+                } else {
+                    Toast.show(data.message || "Error al conectar", "error");
+                    updateStatusBadge(false);
+                }
+            } catch (err) {
+                loader.style.display = 'none';
+                btn.classList.remove('loading');
+                btn.disabled = false;
+                Toast.show("Error de red", "error");
+                updateStatusBadge(false);
+            }
+        });
+
+        // ============================================================
+        //  PROMPT UPDATE (con feedback)
+        // ============================================================
+        document.getElementById('promptForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const text = document.getElementById('promptText').value;
+            const btn = document.getElementById('promptSubmitBtn');
+            if (!window.botID) {
+                Toast.show("No tienes un bot activo. Contacta a soporte.", "error");
+                return;
+            }
+            btn.disabled = true;
+            btn.classList.add('loading');
+            try {
+                const res = await fetch(`/bot/${window.botID}/prompt`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+                    body: JSON.stringify({ prompt: text })
+                });
+                if (res.ok) {
+                    Toast.show("Prompt actualizado correctamente", "success");
+                } else {
+                    const err = await res.json();
+                    Toast.show(err.error || "Error al guardar el prompt", "error");
+                }
+            } catch (err) {
+                Toast.show("Error de red", "error");
+            }
+            btn.disabled = false;
+            btn.classList.remove('loading');
+        });
+
+        // ============================================================
+        //  PHONE UPDATE
+        // ============================================================
+        document.getElementById('phoneForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const text = document.getElementById('phoneText').value.trim();
+            const btn = document.getElementById('phoneSubmitBtn');
+            if (!window.userID) {
+                Toast.show("No tienes un usuario activo.", "error");
+                return;
+            }
+            if (text && !/^\+?[0-9]{7,15}$/.test(text)) {
+                Toast.show("Formato de teléfono inválido. Ej: +123456789", "warning");
+                return;
+            }
+            btn.disabled = true;
+            btn.classList.add('loading');
+            try {
+                const res = await fetch(`/user/phone`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+                    body: JSON.stringify({ phone: text })
+                });
+                if (res.ok) {
+                    Toast.show("Teléfono actualizado correctamente", "success");
+                } else {
+                    const err = await res.json();
+                    Toast.show(err.error || "Error al guardar el teléfono", "error");
+                }
+            } catch (err) {
+                Toast.show("Error de red", "error");
+            }
+            btn.disabled = false;
+            btn.classList.remove('loading');
+        });
+
+        // ============================================================
+        //  PASSWORD UPDATE (con validación de fortaleza)
+        // ============================================================
+        const passwordInput = document.getElementById('passwordText');
+        const strengthBar = document.getElementById('passwordStrengthBar');
+
+        passwordInput.addEventListener('input', function () {
+            const val = this.value;
+            let strength = 0;
+            if (val.length >= 6) strength += 1;
+            if (val.length >= 10) strength += 1;
+            if (/[A-Z]/.test(val) && /[a-z]/.test(val)) strength += 1;
+            if (/\d/.test(val)) strength += 1;
+            if (/[^A-Za-z0-9]/.test(val)) strength += 1;
+            const pct = Math.min(strength / 5 * 100, 100);
+            strengthBar.style.width = pct + '%';
+            if (pct < 30) {
+                strengthBar.style.background = '#ef4444';
+            } else if (pct < 60) {
+                strengthBar.style.background = '#eab308';
+            } else {
+                strengthBar.style.background = 'var(--color-primary)';
+            }
+        });
+
+        document.getElementById('passwordForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const text = passwordInput.value.trim();
+            const btn = document.getElementById('passwordSubmitBtn');
+            if (!window.userID) {
+                Toast.show("No tienes un usuario activo.", "error");
+                return;
+            }
+            if (text.length < 6) {
+                Toast.show("La contraseña debe tener al menos 6 caracteres.", "warning");
+                return;
+            }
+            btn.disabled = true;
+            btn.classList.add('loading');
+            try {
+                const res = await fetch(`/user/password`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+                    body: JSON.stringify({ password: text })
+                });
+                if (res.ok) {
+                    Toast.show("Contraseña actualizada correctamente", "success");
+                    passwordInput.value = '';
+                    strengthBar.style.width = '0%';
+                } else {
+                    const err = await res.json();
+                    Toast.show(err.error || "Error al guardar la contraseña", "error");
+                }
+            } catch (err) {
+                Toast.show("Error de red", "error");
+            }
+            btn.disabled = false;
+            btn.classList.remove('loading');
+        });
+
+        // ============================================================
+        //  UPGRADE
+        // ============================================================
+        const upgradeBtn = document.getElementById('upgradeBtn');
+        if (upgradeBtn) {
+            upgradeBtn.addEventListener('click', async () => {
+                try {
+                    const res = await fetch('/api/payments/checkout', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+                        body: JSON.stringify({ bot_id: window.botID, tier: 'pro' })
+                    });
+                    const data = await res.json();
+                    if (res.ok && data.checkout_url) {
+                        window.location.href = data.checkout_url;
+                    } else {
+                        Toast.show(data.error || "Error al iniciar pago", "error");
+                    }
+                } catch (err) {
+                    Toast.show("Error de red", "error");
+                }
+            });
+        }
+
+        console.log('✅ Dashboard Wago cargado correctamente');
+        console.log('📱 Modo móvil:', detectMobile());
+        console.log('📂 Sidebar abierto:', sidebarOpen);
+    </script>
+</body>
+
+</html>
