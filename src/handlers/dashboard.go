@@ -76,3 +76,13 @@ func (h *DashboardHandler) Render(c fiber.Ctx) error {
 	c.Set("Content-Type", "text/html")
 	return c.SendString(html + string(content))
 }
+func (h *DashboardHandler) ListPedidos(c fiber.Ctx) error {
+	limit := c.Query("limit", "100")
+	offset := c.Query("offset", "0")
+	userID := c.Locals("user_id").(int)
+	user, err := h.userSvc.ListAllHistory(c, userID, limit, offset)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Error al obtener usuarios"})
+	}
+	return c.JSON(user)
+}

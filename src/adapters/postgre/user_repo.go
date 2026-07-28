@@ -104,7 +104,24 @@ func (r *UserRepo) ListAll(ctx context.Context, limit string, offset string) ([]
 	}
 	return users, nil
 }
-
+func (r *UserRepo) ListAllHistory(ctx context.Context, userID int, limit string, offset string) ([]domain.User, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT client, pedido, created_at FROM users WHERE user_id=$1 ORDER BY id OFFSET $2 LIMIT $3`,
+		userID, offset, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var users []domain.User
+	for rows.Next() {
+		var u domain.User
+		if err := rows.Scan(&u.ID, &u.Username, &u.Email, &u.Phone, &u.PasswordHash, &u.Role, &u.CreatedAt); err != nil {
+			return nil, err
+		}
+		users = append(users, u)
+	}
+	return users, nil
+}
 func (r *UserRepo) CountAdmins(ctx context.Context) (int, error) {
 	var count int
 	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users WHERE role = 'admin'`).Scan(&count)

@@ -59,6 +59,7 @@ func runMigrations(db *sql.DB, log logger.Logger) {
 		user_id INT NOT NULL,
 		client TEXT NOT NULL,
 		pedido TEXT NOT NULL,
+		created_at DATE DEFAULT CURRENT_TIMESTAMP
 	);
 	CREATE TABLE IF NOT EXISTS subscriptions (
 		bot_id INTEGER PRIMARY KEY REFERENCES bots(id) ON DELETE CASCADE,

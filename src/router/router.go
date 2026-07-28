@@ -61,10 +61,11 @@ func Setup(
 	app.Put("/user/password", handlers.AuthRequired, authH.UpdatePassword)
 	app.Put("/user/email", handlers.AuthRequired, authH.UpdateEmail)
 	app.Put("/user/phone", handlers.AuthRequired, authH.UpdatePhone)
+	app.Get("/bot/:id/status", handlers.AuthRequired)
 
 	// ──── Dashboard ────
 	app.Get("/dashboard", handlers.AuthRequired, dashH.Render)
-
+	app.Get("/pedidos", dashH.ListPedidos)
 	// ──── Bot ────
 	app.Post("/start-bot", handlers.AuthRequired, lim, botH.StartBot)
 	app.Get("/bot/:id/status", handlers.AuthRequired, botH.GetBotIDStatus)
