@@ -441,7 +441,7 @@ func (s *BotService) NotifyAdmin(botID int, clientJID types.JID, msg string) err
 	s.adminMu.RLock()
 	client := s.AdminClient
 	s.adminMu.RUnlock()
-	fmt.Println(client.Log)
+	s.logger.Info().Msg(fmt.Sprint(client))
 	/* 2. Verificar disponibilidad (cliente existente Y conectado)
 	if client == nil || !client.IsConnected() {
 		s.logger.Warn().Int("bot_id", botID).Msg("Admin client not available, sending email fallback")
