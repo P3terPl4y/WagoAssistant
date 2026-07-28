@@ -442,19 +442,7 @@ func (s *BotService) NotifyAdmin(botID int, clientJID types.JID, msg string) err
 	client := s.AdminClient
 	s.adminMu.RUnlock()
 
-	// Verificar si el cliente existe y está conectado
-	if client == nil || !client.IsConnected() {
-		s.logger.Warn().Int("bot_id", botID).Bool("is_nil", client == nil).Msg("AdminClient not available or disconnected, sending email fallback")
-
-		// Fallback: enviar correo al admin
-		if s.gNotifier != nil {
-			_ = s.gNotifier.SendAdminNotification("Nuevo pedido/cita - FALLBACK EMAIL", fmt.Sprintf("%s\n\nCliente: %s", msg, clientJID.String()))
-		}
-		return fmt.Errorf("admin client not available or disconnected")
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
+	ctx := context.Background()
 
 	user, err := s.users.GetUserByBotID(ctx, botID)
 	if err != nil || user == nil {
@@ -492,9 +480,8 @@ func (s *BotService) NotifyAdmin(botID int, clientJID types.JID, msg string) err
 		}
 
 		// Enviar mensaje con timeout de 5s por intento
-		sendCtx, sendCancel := context.WithTimeout(ctx, 5*time.Second)
-		_, err = client.SendMessage(sendCtx, userJID, &waE2E.Message{Conversation: &notif})
-		sendCancel()
+		ctx := context.Background()
+		_, err = client.SendMessage(ctx, userJID, &waE2E.Message{Conversation: &notif})
 
 		if err == nil {
 			s.logger.Info().Int("bot_id", botID).Str("phone", user.Phone).Msg("Notification sent via WhatsApp")
