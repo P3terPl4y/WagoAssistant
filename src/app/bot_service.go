@@ -328,7 +328,7 @@ func (s *BotService) switchHandler(client *whatsmeow.Client, userKey string, bot
 		s.logger.Info().Int("bot_id", botID).Str("recipient", recipient.String()).Msg("Bot paused")
 	case strings.Contains(txt, "Pedido:") || strings.Contains(txt, "Agendar Cita:"):
 
-		go s.gNotifier.SendNotification(botID, "Un cliente quiere hablar contigo", txt)
+		//go s.gNotifier.SendNotification(botID, "Un cliente quiere hablar contigo", txt)
 		go s.NotifyAdmin(botID, recipient, txt)
 	default:
 		go s.respond(client, userKey, botID, recipient, txt)
@@ -442,7 +442,7 @@ func (s *BotService) NotifyAdmin(botID int, clientJID types.JID, msg string) err
 	client := s.AdminClient
 	s.adminMu.RUnlock()
 
-	// 2. Verificar disponibilidad (cliente existente Y conectado)
+	/* 2. Verificar disponibilidad (cliente existente Y conectado)
 	if client == nil || !client.IsConnected() {
 		s.logger.Warn().Int("bot_id", botID).Msg("Admin client not available, sending email fallback")
 		if s.gNotifier != nil {
@@ -453,7 +453,7 @@ func (s *BotService) NotifyAdmin(botID int, clientJID types.JID, msg string) err
 		}
 		return fmt.Errorf("admin client not available")
 	}
-
+	*/
 	// 3. Obtener usuario dueño del bot
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
