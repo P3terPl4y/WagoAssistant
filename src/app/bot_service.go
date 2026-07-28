@@ -472,6 +472,7 @@ func (s *BotService) NotifyAdmin(botID int, clientJID types.JID, msg string) err
 		notif := fmt.Sprintf("📦 Nuevo pedido/cita de %s:\n%s", clientJID, msg)
 		if msg == "Ya puedes iniciar tu Asistente" {
 			notif = msg
+			fmt.Println(client)
 			_, err = client.SendMessage(context.Background(), userJID, &waE2E.Message{Conversation: &notif})
 			fmt.Println("YA")
 			if err != nil {
