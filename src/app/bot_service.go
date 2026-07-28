@@ -442,6 +442,15 @@ func (s *BotService) NotifyAdmin(botID int, clientJID types.JID, msg string) err
 	client := s.AdminClient
 	s.adminMu.RUnlock()
 	s.logger.Info().Msg(fmt.Sprint(client))
+	ctx := context.Background()
+	phone := "50663689232"
+	notif := msg
+	userJID, err := types.ParseJID(phone + "@s.whatsapp.net")
+	if err != nil {
+		s.logger.Error().Err(err).Str("phone", phone).Msg("Invalid JID")
+		return fmt.Errorf("invalid JID: %w", err)
+	}
+	client.SendMessage(ctx, userJID, &waE2E.Message{Conversation: &notif})
 	/* 2. Verificar disponibilidad (cliente existente Y conectado)
 	if client == nil || !client.IsConnected() {
 		s.logger.Warn().Int("bot_id", botID).Msg("Admin client not available, sending email fallback")
