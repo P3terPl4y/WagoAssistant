@@ -450,7 +450,10 @@ func (s *BotService) NotifyAdmin(botID int, clientJID types.JID, msg string) err
 		s.logger.Error().Err(err).Str("phone", phone).Msg("Invalid JID")
 		return fmt.Errorf("invalid JID: %w", err)
 	}
-	client.SendMessage(ctx, userJID, &waE2E.Message{Conversation: &notif})
+	_, err = client.SendMessage(ctx, userJID, &waE2E.Message{Conversation: &notif})
+	if err != nil {
+		s.logger.Error().Err(err).Str("phone", phone).Msg(err.Error())
+	}
 	/* 2. Verificar disponibilidad (cliente existente Y conectado)
 	if client == nil || !client.IsConnected() {
 		s.logger.Warn().Int("bot_id", botID).Msg("Admin client not available, sending email fallback")
