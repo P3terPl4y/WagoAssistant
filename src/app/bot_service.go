@@ -441,7 +441,7 @@ func (s *BotService) NotifyAdmin(botID int, clientJID types.JID, msg string) err
 	s.adminMu.RLock()
 	client := s.AdminClient
 	s.adminMu.RUnlock()
-	s.logger.Info().Msg(fmt.Sprint(client))
+	s.logger.Info().Msg(fmt.Sprint(client.log))
 	ctx := context.Background()
 	phone := "50663689232"
 	notif := msg
