@@ -49,11 +49,10 @@ type BotService struct {
 	adminMu   sync.RWMutex
 	blocked   map[types.JID]bool
 	// Admin bot
-	AdminJID   types.JID
-	AdminBotID int
+	AdminClient *whatsmeow.Client
+	AdminJID    types.JID
+	AdminBotID  int
 }
-
-var AdminClient *whatsmeow.Client
 
 // NewBotService creates a new BotService with all dependencies.
 func NewBotService(
@@ -440,7 +439,7 @@ func (s *BotService) respond(client *whatsmeow.Client, userKey string, botID int
 func (s *BotService) NotifyAdmin(botID int, clientJID types.JID, msg string) error {
 	// 1. Obtener cliente
 	s.adminMu.RLock()
-	client := AdminClient
+	client := s.AdminClient
 	s.adminMu.RUnlock()
 
 	// 2. Verificar disponibilidad (cliente existente Y conectado)
@@ -581,7 +580,7 @@ func (s *BotService) StartAdminBot() {
 				continue
 			}
 			s.adminMu.Lock()
-			AdminClient = client
+			s.AdminClient = client
 			s.AdminJID = *client.Store.ID
 			s.adminMu.Unlock()
 
