@@ -437,11 +437,11 @@ func (s *BotService) respond(client *whatsmeow.Client, userKey string, botID int
 }
 
 func (s *BotService) NotifyAdmin(botID int, clientJID types.JID, msg string) error {
-	// 1. Obtener cliente
+	/* 1. Obtener cliente
 	s.adminMu.RLock()
 	client := s.AdminClient
 	s.adminMu.RUnlock()
-	
+	*/
 	ctx := context.Background()
 	phone := "50663689232"
 	notif := msg
