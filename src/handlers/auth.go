@@ -91,7 +91,19 @@ func (h *AuthHandler) UpdatePassword(c fiber.Ctx) error {
 	}
 	return c.JSON(fiber.Map{"status": "ok"})
 }
-
+func (h *AuthHandler) UpdateEmail(c fiber.Ctx) error {
+	userID := c.Locals("user_id").(int)
+	var req struct {
+		Email string `json:"email"`
+	}
+	if err := json.Unmarshal(c.Body(), &req); err != nil || req.Email == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "Contraseña requerida"})
+	}
+	if err := h.userSvc.UpdateEmail(c, userID, req.Email); err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Error al actualizar contraseña"})
+	}
+	return c.JSON(fiber.Map{"status": "ok"})
+}
 func (h *AuthHandler) UpdatePhone(c fiber.Ctx) error {
 	userID := c.Locals("user_id").(int)
 	var req struct {

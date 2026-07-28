@@ -63,7 +63,10 @@ func (r *UserRepo) UpdatePassword(ctx context.Context, userID int, passwordHash 
 	_, err := r.db.ExecContext(ctx, `UPDATE users SET password_hash = $1 WHERE id = $2`, passwordHash, userID)
 	return err
 }
-
+func (r *UserRepo) UpdateEmail(ctx context.Context, userID int, email string) error {
+	_, err := r.db.ExecContext(ctx, `UPDATE users SET email = $1 WHERE id = $2`, email, userID)
+	return err
+}
 func (r *UserRepo) UpdatePhone(ctx context.Context, userID int, phone string) error {
 	_, err := r.db.ExecContext(ctx, `UPDATE users SET phone = $1 WHERE id = $2`, phone, userID)
 	return err

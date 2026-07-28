@@ -59,6 +59,7 @@ func Setup(
 
 	// ──── User (authenticated) ────
 	app.Put("/user/password", handlers.AuthRequired, authH.UpdatePassword)
+	app.Put("/user/email", handlers.AuthRequired, authH.UpdatePhone)
 	app.Put("/user/phone", handlers.AuthRequired, authH.UpdatePhone)
 
 	// ──── Dashboard ────

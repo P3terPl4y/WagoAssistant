@@ -15,6 +15,7 @@ type UserRepository interface {
 	GetByEmail(ctx context.Context, email string) (*domain.User, error)
 	Create(ctx context.Context, username, email, phone, passwordHash string) (*domain.User, error)
 	UpdatePassword(ctx context.Context, userID int, passwordHash string) error
+	UpdateEmail(ctx context.Context, userID int, email string) error
 	UpdatePhone(ctx context.Context, userID int, phone string) error
 	Delete(ctx context.Context, id int) error
 	ListAll(ctx context.Context, limit string, offset string) ([]domain.User, error)

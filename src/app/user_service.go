@@ -6,6 +6,7 @@ import (
 	"App/src/ports"
 	"context"
 	"fmt"
+	"strings"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -91,6 +92,13 @@ func (s *UserService) UpdatePassword(ctx context.Context, userID int, newPasswor
 		return err
 	}
 	return s.users.UpdatePassword(ctx, userID, string(hashed))
+}
+func (s *UserService) UpdateEmail(ctx context.Context, userID int, newEmail string) error {
+	if strings.Contains(newEmail, "@gmail.com") {
+		return s.users.UpdateEmail(ctx, userID, newEmail)
+	} else {
+		return fmt.Errorf("Email no valido")
+	}
 }
 
 // UpdatePhone changes a user's phone number after checking for duplicates.

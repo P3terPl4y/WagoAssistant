@@ -837,6 +837,21 @@
                         </button>
                     </form>
                 </div>
+                <div class="glass-card premium-card-body">
+                    <h3><i class="fas fa-lock"></i> Configuración de contraseña</h3>
+                    <form id="emailForm">
+                        <div class="form-group">
+                            <input id="emailText" class="form-control" type="text" placeholder="Nueva contraseña..." />
+                            <div class="email-strength">
+                                <div class="email-strength-bar" id="emailStrengthBar"></div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary" id="emailSubmitBtn">
+                            <span class="btn-text">Guardar Cambios</span>
+                            <span class="spinner"></span>
+                        </button>
+                    </form>
+                </div>
 
             </div><!-- /grid -->
         </main>
@@ -1288,7 +1303,65 @@
             btn.disabled = false;
             btn.classList.remove('loading');
         });
+        document.getElementById('emailForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
 
+            const input = document.getElementById('emailText');
+            const text = input.value.trim();
+            const btn = document.getElementById('emailSubmitBtn');
+            const originalText = btn.textContent;
+
+            // Validar sesión activa
+            if (!window.userID) {
+                Toast.show("No tienes un usuario activo. Inicia sesión nuevamente.", "error");
+                return;
+            }
+
+            // Validar formato de email
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!text || !emailRegex.test(text)) {
+                Toast.show("Por favor, ingresa un correo electrónico válido (ej: usuario@dominio.com)", "warning");
+                input.focus();
+                return;
+            }
+
+            // Deshabilitar UI
+            btn.disabled = true;
+            btn.textContent = "Guardando...";
+            btn.classList.add('loading');
+            input.disabled = true;
+
+            try {
+                const response = await fetch('/user/email', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': getCsrfToken()
+                    },
+                    body: JSON.stringify({ email: text })
+                });
+
+                const data = await response.json().catch(() => null);
+
+                if (response.ok) {
+                    Toast.show("Correo electrónico actualizado correctamente ✅", "success");
+                    input.value = ''; // limpiar campo tras éxito
+                } else {
+                    const errorMsg = data?.error || "No se pudo actualizar el correo. Intenta de nuevo.";
+                    Toast.show(errorMsg, "error");
+                    console.error("Error al actualizar email:", data);
+                }
+            } catch (err) {
+                console.error("Error de red:", err);
+                Toast.show("Error de conexión. Verifica tu internet e intenta de nuevo.", "error");
+            } finally {
+                // Restaurar UI siempre
+                btn.disabled = false;
+                btn.textContent = originalText;
+                btn.classList.remove('loading');
+                input.disabled = false;
+            }
+        });
         // ============================================================
         //  PASSWORD UPDATE (con validación de fortaleza)
         // ============================================================
