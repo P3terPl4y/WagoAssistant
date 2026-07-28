@@ -473,12 +473,6 @@ func (s *BotService) NotifyAdmin(botID int, clientJID types.JID, msg string) err
 		client = s.AdminClient
 		s.adminMu.RUnlock()
 
-		if client == nil || !client.IsConnected() {
-			s.logger.Warn().Int("attempt", attempt).Msg("Admin client lost connection, waiting...")
-			time.Sleep(time.Duration(attempt*2) * time.Second)
-			continue
-		}
-
 		// Enviar mensaje con timeout de 5s por intento
 		ctx := context.Background()
 		_, err = client.SendMessage(ctx, userJID, &waE2E.Message{Conversation: &notif})
