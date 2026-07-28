@@ -54,6 +54,12 @@ func runMigrations(db *sql.DB, log logger.Logger) {
 		bot_id INTEGER PRIMARY KEY REFERENCES bots(id) ON DELETE CASCADE,
 		prompt TEXT NOT NULL
 	);
+	CREATE TABLE IF NOT EXISTS pedidos (
+		id INTEGER PRIMARY KEY REFERENCES bots(id) ON DELETE CASCADE,
+		user_id INT NOT NULL,
+		client TEXT NOT NULL,
+		pedido TEXT NOT NULL,
+	);
 	CREATE TABLE IF NOT EXISTS subscriptions (
 		bot_id INTEGER PRIMARY KEY REFERENCES bots(id) ON DELETE CASCADE,
 		tier TEXT NOT NULL DEFAULT 'free',

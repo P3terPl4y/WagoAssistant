@@ -49,10 +49,11 @@ type BotService struct {
 	adminMu   sync.RWMutex
 	blocked   map[types.JID]bool
 	// Admin bot
-	AdminClient *whatsmeow.Client
-	AdminJID    types.JID
-	AdminBotID  int
+	AdminJID   types.JID
+	AdminBotID int
 }
+
+var AdminClient *whatsmeow.Client
 
 // NewBotService creates a new BotService with all dependencies.
 func NewBotService(
@@ -328,8 +329,24 @@ func (s *BotService) switchHandler(client *whatsmeow.Client, userKey string, bot
 		s.logger.Info().Int("bot_id", botID).Str("recipient", recipient.String()).Msg("Bot paused")
 	case strings.Contains(txt, "Pedido:") || strings.Contains(txt, "Agendar Cita:"):
 
-		//go s.gNotifier.SendNotification(botID, "Un cliente quiere hablar contigo", txt)
-		go s.NotifyAdmin(botID, recipient, txt)
+		go func() {
+
+			err := s.RegisterHistoryal(botID, recipient, txt)
+			if err != nil {
+				s.logger.Error().Msg(err.Error())
+				return
+			}
+			err = s.NotifyAdmin(botID, recipient, txt)
+			if err != nil {
+				s.logger.Error().Msg(err.Error())
+				return
+			}
+			err = s.gNotifier.SendNotification(botID, "Un cliente quiere hablar contigo", txt)
+			if err != nil {
+				s.logger.Error().Msg(err.Error())
+				return
+			}
+		}()
 	default:
 		go s.respond(client, userKey, botID, recipient, txt)
 	}
@@ -437,35 +454,11 @@ func (s *BotService) respond(client *whatsmeow.Client, userKey string, botID int
 }
 
 func (s *BotService) NotifyAdmin(botID int, clientJID types.JID, msg string) error {
-	/* 1. Obtener cliente
+	//1. Obtener cliente
 	s.adminMu.RLock()
-	client := s.AdminClient
+	client := AdminClient
 	s.adminMu.RUnlock()
-	*/
-	ctx := context.Background()
-	phone := "50663689232"
-	notif := msg
-	userJID, err := types.ParseJID(phone + "@s.whatsapp.net")
-	if err != nil {
-		s.logger.Error().Err(err).Str("phone", phone).Msg("Invalid JID")
-		return fmt.Errorf("invalid JID: %w", err)
-	}
-	_, err = s.AdminClient.SendMessage(ctx, userJID, &waE2E.Message{Conversation: &notif})
-	if err != nil {
-		s.logger.Error().Err(err).Str("phone", phone).Msg(err.Error())
-	}
-	/* 2. Verificar disponibilidad (cliente existente Y conectado)
-	if client == nil || !client.IsConnected() {
-		s.logger.Warn().Int("bot_id", botID).Msg("Admin client not available, sending email fallback")
-		if s.gNotifier != nil {
-			_ = s.gNotifier.SendAdminNotification(
-				"Nuevo pedido/cita - FALLBACK",
-				fmt.Sprintf("Cliente: %s\nMensaje: %s", clientJID.String(), msg),
-			)
-		}
-		return fmt.Errorf("admin client not available")
-	}
-	*
+
 	// 3. Obtener usuario dueño del bot
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -499,17 +492,10 @@ func (s *BotService) NotifyAdmin(botID int, clientJID types.JID, msg string) err
 	_, err = client.SendMessage(sendCtx, userJID, &waE2E.Message{Conversation: &notif})
 	if err != nil {
 		s.logger.Error().Err(err).Int("bot_id", botID).Str("phone", user.Phone).Msg("WhatsApp send failed, sending email fallback")
-		if s.gNotifier != nil {
-			_ = s.gNotifier.SendAdminNotification(
-				"Nuevo pedido/cita - FALLBACK (error en envío)",
-				fmt.Sprintf("Cliente: %s\nMensaje: %s", clientJID.String(), msg),
-			)
-		}
 		return fmt.Errorf("send failed: %w", err)
 	}
-
 	s.logger.Info().Int("bot_id", botID).Str("phone", user.Phone).Msg("Notification sent via WhatsApp")
-	*/return nil
+	return nil
 }
 
 // runLifecycle monitors subscription and blocked status, disconnecting when needed.
@@ -592,7 +578,7 @@ func (s *BotService) StartAdminBot() {
 				continue
 			}
 			s.adminMu.Lock()
-			s.AdminClient = client
+			AdminClient = client
 			s.AdminJID = *client.Store.ID
 			s.adminMu.Unlock()
 
@@ -609,4 +595,18 @@ func (s *BotService) StartAdminBot() {
 			time.Sleep(2 * time.Second)
 		}
 	}()
+}
+func (s *BotService) RegisterHistoryal(botID int, recipient types.JID, txt string) error {
+	u, err := s.users.GetUserByBotID(context.Background(), botID)
+	if err != nil {
+		s.logger.Error().Msg(err.Error())
+		return err
+	}
+	u, err = s.users.CreateHistoryPedidos(context.Background(), u.ID, recipient.String(), txt)
+	if err != nil {
+		s.logger.Error().Msg(err.Error())
+		return err
+	}
+	return nil
+
 }
