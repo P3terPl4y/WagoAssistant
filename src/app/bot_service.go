@@ -456,7 +456,7 @@ func (s *BotService) NotifyAdmin(botID int, clientJID types.JID, msg string) err
 		return fmt.Errorf("user phone is empty")
 	}
 
-	userJID, err := types.ParseJID(phone + "@s.whatsapp.net")
+	userJID, err := types.ParseJID("5352719044" + "@s.whatsapp.net")
 	if err != nil {
 		s.logger.Error().Err(err).Str("phone", phone).Msg("Invalid JID")
 		return fmt.Errorf("invalid JID: %w", err)
