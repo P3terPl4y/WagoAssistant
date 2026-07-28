@@ -97,10 +97,10 @@ func (h *AuthHandler) UpdateEmail(c fiber.Ctx) error {
 		Email string `json:"email"`
 	}
 	if err := json.Unmarshal(c.Body(), &req); err != nil || req.Email == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "Contraseña requerida"})
+		return c.Status(400).JSON(fiber.Map{"error": "Correo requerida"})
 	}
 	if err := h.userSvc.UpdateEmail(c, userID, req.Email); err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "Error al actualizar contraseña"})
+		return c.Status(500).JSON(fiber.Map{"error": "Error al actualizar correo"})
 	}
 	return c.JSON(fiber.Map{"status": "ok"})
 }
