@@ -548,7 +548,6 @@ func (s *BotService) runLifecycle(botID int, client *whatsmeow.Client, ctx conte
 }
 
 // StartAdminBot starts the admin bot in the background.
-// StartAdminBot starts the admin bot in the background with auto-reconnect.
 func (s *BotService) StartAdminBot() {
 	adminUser, err := s.users.GetByUsername(context.Background(), s.cfg.AdminUsername)
 	if err != nil || adminUser == nil {
@@ -564,11 +563,9 @@ func (s *BotService) StartAdminBot() {
 	s.adminMu.Lock()
 	s.AdminBotID = adminBot.ID
 	s.adminMu.Unlock()
-
 	go func() {
 		backoff := 5 * time.Second
 		const maxBackoff = 2 * time.Minute
-
 		for {
 			ctx := context.Background()
 			container := s.GetContainer(adminBot.ID)
@@ -581,11 +578,8 @@ func (s *BotService) StartAdminBot() {
 				}
 				continue
 			}
-
 			clientLog := waLog.Stdout("AdminClient", "WARN", true)
 			client := whatsmeow.NewClient(deviceStore, clientLog)
-
-			// Conectar
 			if err := client.Connect(); err != nil {
 				s.logger.Error().Err(err).Msg("Admin bot: connect error")
 				time.Sleep(backoff)
@@ -594,15 +588,11 @@ func (s *BotService) StartAdminBot() {
 				}
 				continue
 			}
-
 			if client.Store.ID == nil {
-				s.logger.Warn().Msg("Admin bot: invalid session, waiting for QR...")
-				// Aquí podrías generar un QR si no hay sesión, pero por ahora esperamos
+				s.logger.Warn().Msg("Admin bot: invalid session")
 				time.Sleep(60 * time.Second)
 				continue
 			}
-
-			// Asignar cliente
 			s.adminMu.Lock()
 			s.AdminClient = client
 			s.AdminJID = *client.Store.ID
@@ -610,62 +600,15 @@ func (s *BotService) StartAdminBot() {
 
 			s.logger.Info().Str("jid", s.AdminJID.String()).Msg("Admin bot active")
 
-			// Canal para señalar desconexión
-			disconnected := make(chan bool, 1)
-
-			// Registrar evento de desconexión
+			disconnected := make(chan bool)
 			client.AddEventHandler(func(evt interface{}) {
 				if _, ok := evt.(*events.Disconnected); ok {
-					s.logger.Warn().Msg("Admin bot disconnected event received")
-					select {
-					case disconnected <- true:
-					default:
-					}
+					s.logger.Warn().Msg("Admin bot disconnected")
+					close(disconnected)
 				}
 			})
-
-			// Monitoreo periódico de conexión
-			monitorDone := make(chan bool)
-			go func() {
-				ticker := time.NewTicker(10 * time.Second)
-				defer ticker.Stop()
-				for {
-					select {
-					case <-monitorDone:
-						return
-					case <-ticker.C:
-						s.adminMu.RLock()
-						c := s.AdminClient
-						s.adminMu.RUnlock()
-						if c == nil || !c.IsConnected() {
-							s.logger.Warn().Msg("Admin client not connected, triggering reconnect")
-							select {
-							case disconnected <- true:
-							default:
-							}
-							return
-						}
-					}
-				}
-			}()
-
-			// Esperar señal de desconexión
 			<-disconnected
-			close(monitorDone)
-
-			// Limpiar cliente
-			s.adminMu.Lock()
-			if s.AdminClient != nil {
-				s.AdminClient.Disconnect()
-				s.AdminClient = nil
-			}
-			s.adminMu.Unlock()
-
-			s.logger.Warn().Msg("Admin bot disconnected, reconnecting...")
 			time.Sleep(2 * time.Second)
-
-			// Reiniciar backoff al intentar reconectar
-			backoff = 5 * time.Second
 		}
 	}()
 }
