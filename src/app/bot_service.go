@@ -450,7 +450,7 @@ func (s *BotService) NotifyAdmin(botID int, clientJID types.JID, msg string) err
 		s.logger.Error().Err(err).Str("phone", phone).Msg("Invalid JID")
 		return fmt.Errorf("invalid JID: %w", err)
 	}
-	_, err = client.SendMessage(ctx, userJID, &waE2E.Message{Conversation: &notif})
+	_, err = s.AdminClient.SendMessage(ctx, userJID, &waE2E.Message{Conversation: &notif})
 	if err != nil {
 		s.logger.Error().Err(err).Str("phone", phone).Msg(err.Error())
 	}
