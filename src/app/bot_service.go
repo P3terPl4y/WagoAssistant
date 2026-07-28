@@ -441,7 +441,7 @@ func (s *BotService) NotifyAdmin(botID int, clientJID types.JID, msg string) err
 	s.adminMu.RLock()
 	client := s.AdminClient
 	s.adminMu.RUnlock()
-
+	fmt.Println(client.Log)
 	/* 2. Verificar disponibilidad (cliente existente Y conectado)
 	if client == nil || !client.IsConnected() {
 		s.logger.Warn().Int("bot_id", botID).Msg("Admin client not available, sending email fallback")
@@ -453,7 +453,7 @@ func (s *BotService) NotifyAdmin(botID int, clientJID types.JID, msg string) err
 		}
 		return fmt.Errorf("admin client not available")
 	}
-	*/
+	*
 	// 3. Obtener usuario dueño del bot
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -497,7 +497,7 @@ func (s *BotService) NotifyAdmin(botID int, clientJID types.JID, msg string) err
 	}
 
 	s.logger.Info().Int("bot_id", botID).Str("phone", user.Phone).Msg("Notification sent via WhatsApp")
-	return nil
+	*/return nil
 }
 
 // runLifecycle monitors subscription and blocked status, disconnecting when needed.
