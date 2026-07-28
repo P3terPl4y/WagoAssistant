@@ -438,9 +438,6 @@ func (s *BotService) respond(client *whatsmeow.Client, userKey string, botID int
 
 // notifyAdmin sends a notification to the bot owner via the admin bot.
 func (s *BotService) NotifyAdmin(botID int, clientJID types.JID, msg string) error {
-	s.adminMu.RLock()
-	client := s.AdminClient
-	s.adminMu.RUnlock()
 
 	ctx := context.Background()
 
@@ -469,13 +466,10 @@ func (s *BotService) NotifyAdmin(botID int, clientJID types.JID, msg string) err
 
 	for attempt := 1; attempt <= 3; attempt++ {
 		// Refrescar cliente en cada intento
-		s.adminMu.RLock()
-		client = s.AdminClient
-		s.adminMu.RUnlock()
 
 		// Enviar mensaje con timeout de 5s por intento
 		ctx := context.Background()
-		_, err = client.SendMessage(ctx, userJID, &waE2E.Message{Conversation: &notif})
+		_, err = s.AdminClient.SendMessage(ctx, userJID, &waE2E.Message{Conversation: &notif})
 
 		if err == nil {
 			s.logger.Info().Int("bot_id", botID).Str("phone", user.Phone).Msg("Notification sent via WhatsApp")
