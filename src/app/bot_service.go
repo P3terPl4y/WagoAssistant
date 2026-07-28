@@ -442,57 +442,56 @@ func (s *BotService) NotifyAdmin(botID int, clientJID types.JID, msg string) err
 	client := s.AdminClient
 	s.adminMu.RUnlock()
 	if client == nil {
-		s.logger.Warn().Msg("Admin bot not available")
-		return fmt.Errorf("Admin bot not available")
+		s.logger.Warn().Int("bot_id", botID).Msg("AdminClient is nil, sending email fallback")
+		// Fallback: enviar correo al admin
+		if s.gNotifier != nil {
+			_ = s.gNotifier.SendAdminNotification("Nuevo pedido/cita", msg)
+		}
+		return fmt.Errorf("admin client unavailable")
 	}
-	ctx := context.Background()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
 
 	user, err := s.users.GetUserByBotID(ctx, botID)
 	if err != nil || user == nil {
-		return err
+		return fmt.Errorf("user not found: %w", err)
 	}
 	phone := strings.TrimPrefix(user.Phone, "+")
 	if phone == "" {
-		return err
+		return fmt.Errorf("user phone is empty")
 	}
 	userJID, err := types.ParseJID(phone + "@s.whatsapp.net")
 	if err != nil {
-		return err
+		return fmt.Errorf("invalid JID: %w", err)
+	}
+
+	notif := fmt.Sprintf("📦 Nuevo pedido/cita de %s:\n%s", clientJID, msg)
+	if msg == "Ya puedes iniciar tu Asistente" {
+		notif = msg
 	}
 
 	for attempt := 1; attempt <= 3; attempt++ {
-
+		// Refrescar cliente
 		s.adminMu.RLock()
-		client := s.AdminClient
+		client = s.AdminClient
 		s.adminMu.RUnlock()
 		if client == nil {
 			time.Sleep(2 * time.Second)
 			continue
 		}
-		notif := fmt.Sprintf("📦 Nuevo pedido/cita de %s:\n%s", clientJID, msg)
-		if msg == "Ya puedes iniciar tu Asistente" {
-			notif = msg
-			_, err = client.SendMessage(context.Background(), userJID, &waE2E.Message{Conversation: &notif})
-			if err != nil {
-				continue
-			} else {
-				s.logger.Info().Str("phone", user.Phone).Int("bot_id", botID).Msg("Notification sent to bot owner")
-				break
-			}
-		} else {
-			_, err = client.SendMessage(context.Background(), userJID, &waE2E.Message{Conversation: &notif})
-			if err != nil {
-				continue
-			} else {
-				s.logger.Info().Str("phone", user.Phone).Int("bot_id", botID).Msg("Notification sent to bot owner")
-				break
-			}
-		}
-		time.Sleep(time.Duration(attempt*2) * time.Second)
 
+		_, err = client.SendMessage(ctx, userJID, &waE2E.Message{Conversation: &notif})
+		if err == nil {
+			s.logger.Info().Int("bot_id", botID).Str("phone", user.Phone).Msg("Notification sent")
+			return nil
+		}
+		s.logger.Warn().Int("attempt", attempt).Err(err).Msg("SendMessage failed")
+		time.Sleep(time.Duration(attempt*attempt) * time.Second)
 	}
-	s.logger.Error().Str("phone", user.Phone).Msg("Failed to send notification after 3 attempts")
-	return nil
+
+	s.logger.Error().Int("bot_id", botID).Str("phone", user.Phone).Msg("Failed after 3 attempts")
+	return fmt.Errorf("failed after 3 attempts")
 }
 
 // runLifecycle monitors subscription and blocked status, disconnecting when needed.
