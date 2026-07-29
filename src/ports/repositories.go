@@ -20,7 +20,7 @@ type UserRepository interface {
 	UpdatePhone(ctx context.Context, userID int, phone string) error
 	Delete(ctx context.Context, id int) error
 	ListAll(ctx context.Context, limit string, offset string) ([]domain.User, error)
-	ListAllHistory(ctx context.Context, userID int, limit string, offset string) ([]domain.User, error)
+	ListAllHistory(ctx context.Context, userID int, limit string, offset string) ([]domain.Pedido, error)
 	CountAdmins(ctx context.Context) (int, error)
 	CheckDuplicate(ctx context.Context, username, email, phone string) (bool, error)
 	CheckPhoneTaken(ctx context.Context, phone string, excludeUserID int) (bool, error)

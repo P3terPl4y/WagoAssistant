@@ -130,7 +130,7 @@ func (s *UserService) GetByUsername(ctx context.Context, username string) (*doma
 func (s *UserService) ListAll(ctx context.Context, limit string, offset string) ([]domain.User, error) {
 	return s.users.ListAll(ctx, limit, offset)
 }
-func (s *UserService) ListAllHistory(ctx context.Context, userID int, limit string, offset string) ([]domain.User, error) {
+func (s *UserService) ListAllHistory(ctx context.Context, userID int, limit string, offset string) ([]domain.Pedido, error) {
 	return s.users.ListAllHistory(ctx, userID, limit, offset)
 }
 
