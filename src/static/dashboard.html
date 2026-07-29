@@ -669,6 +669,39 @@
             display: flex;
         }
 
+        .tbl-container {
+            width: 99vw;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: var(--color-table);
+        }
+
+        th,
+        td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--color-secondary);
+        }
+
+        th {
+            background-color: var(--color-primary);
+            color: var(--color-light);
+        }
+
+        tr:hover {
+            background-color: rgba(192, 160, 128, 0.1);
+        }
+
+
         /* Ajuste para que el logo del sidebar sea más pequeño en colapsado */
         /* no aplicamos nada extra */
     </style>
@@ -854,9 +887,20 @@
                 </div>
 
             </div><!-- /grid -->
+            <div class="tbl-container">
+                <table class="table">
+
+                    <thead>
+                        <th>ID</th>
+                        <th>Pedido</th>
+                        <th>Fecha</th>
+                    </thead>
+                    <tbody>
+
+                </table>
+            </div>
         </main>
     </div><!-- /dashboard-container -->
-
     <script src="/assets/js/main.js?v=2"></script>
     <script>
         // ============================================================
@@ -1445,7 +1489,23 @@
                 }
             });
         }
-
+        async function cargarPedidos() {
+            const response = await fetch('http://localhost:8000/inventario/Pedidos/data')
+            const data = await response.json()
+            let list_Pedidos = []
+            data.forEach(e => {
+                let insumo = `
+            <tr>
+              <th>${e.id}</th>
+              <th>${e.user_id}</th>
+              <th>${e.pedido}</th>
+              <th>${e.create_at}</th>
+            </tr>`
+                list_Pedidos.push(insumo)
+            });
+            document.body.appendChild(list_Pedidos)
+        }
+        cargarPedidos()
         console.log('✅ Dashboard Wago cargado correctamente');
         console.log('📱 Modo móvil:', detectMobile());
         console.log('📂 Sidebar abierto:', sidebarOpen);

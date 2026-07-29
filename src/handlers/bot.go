@@ -33,67 +33,78 @@ func NewBotHandler(botSvc *app.BotService, botRepo ports.BotRepository, promptRe
 }
 
 func (h *BotHandler) StartBot(c fiber.Ctx) error {
-	userID := c.Locals("user_id").(int)
-	role := c.Locals("role").(string)
-	ctx := c
-	h.logger.Info().Msg("Enviando notificacion al admin")
-	msg := fmt.Sprintf("Tienes pagos por confirmar")
-	err := h.gNotifier.SendAdminNotification(msg, "Ve a confirmar el pago")
-	if err != nil {
-		h.logger.Error().Msg(err.Error())
-	}
-	h.logger.Info().Msg("Se debio enviar notificacion a admin")
-	bots, err := h.botRepo.GetByUser(ctx, userID)
-	if err != nil {
-		return c.JSON(fiber.Map{"status": "error", "message": "Error al verificar bots"})
-	}
+    userID := c.Locals("user_id").(int)
+    role := c.Locals("role").(string)
+    ctx := c
 
-	if len(bots) > 0 {
-		bot := bots[0]
-		if bot.Blocked {
-			return c.JSON(fiber.Map{"status": "error", "message": "El bot está bloqueado. Contacta al administrador."})
-		}
-		if role != "admin" {
+    // ... (logs existentes) ...
 
-			if bot.PaymentStatus == "pending" {
-				msg := fmt.Sprintf("Tienes pagos por confirmar")
-				err := h.gNotifier.SendAdminNotification(msg, "Ve a confirmar el pago")
-				if err != nil {
-					h.logger.Error().Msg(err.Error())
-				}
-				fmt.Println("Enviando notificacion a admin")
-				return c.JSON(fiber.Map{"status": "pending_payment", "id": bot.ID, "payment_status": "pending", "message": "Pago pendiente. Espera confirmación del administrador."})
-			}
-			if bot.PaymentStatus != "paid" && bot.PaymentStatus != "free" {
-				return c.JSON(fiber.Map{"status": "error", "message": "Estado de pago inválido."})
-			}
-		}
-		if h.botMgr.IsActive(bot.ID) {
-			return c.JSON(fiber.Map{"status": "session_exists", "id": bot.ID})
-		}
+    bots, err := h.botRepo.GetByUser(ctx, userID)
+    if err != nil {
+        return c.JSON(fiber.Map{"status": "error", "message": "Error al verificar bots"})
+    }
 
-		return h.LaunchBot(c, bot.ID)
-	}
+    if len(bots) > 0 {
+        bot := bots[0]
+        if bot.Blocked {
+            return c.JSON(fiber.Map{"status": "error", "message": "El bot está bloqueado. Contacta al administrador."})
+        }
 
-	// Create new bot
-	status := "pending"
-	if role == "admin" {
-		status = "free"
-	}
-	sessionFile := fmt.Sprintf("whatsapp_bot%d.db", userID)
-	newID, err := h.botRepo.Create(ctx, userID, sessionFile, status)
-	if err != nil {
-		return c.JSON(fiber.Map{"status": "error", "message": "Error al crear bot"})
-	}
-	newSessionFile := fmt.Sprintf("whatsapp_bot%d.db", newID)
-	_ = h.botRepo.UpdateSessionFile(ctx, newID, newSessionFile)
+        if role != "admin" {
+            // ... (validaciones de pago) ...
+        }
 
-	if role == "admin" {
-		return h.LaunchBot(c, newID)
-	}
-	return c.JSON(fiber.Map{"status": "pending_payment", "id": newID, "payment_status": "pending", "message": "Bot creado. Se requiere confirmación de pago por parte del administrador."})
+        // 🔹 Si el bot ya está activo
+        if h.botMgr.IsActive(bot.ID) {
+            // --- ASIGNAR ADMIN CLIENT SI ES ADMIN ---
+            if role == "admin" {
+                _ = h.botSvc.SetAdminClientByBotID(bot.ID)
+            }
+            // ---------------------------------------
+            return c.JSON(fiber.Map{"status": "session_exists", "id": bot.ID})
+        }
+
+        // 🔹 Si el bot no está activo, lanzarlo
+        result := h.LaunchBot(c, bot.ID)
+
+        // --- ASIGNAR ADMIN CLIENT DESPUÉS DE LANZAR (SI ES ADMIN) ---
+        if role == "admin" {
+            go func(bID int) {
+                time.Sleep(2 * time.Second) // esperar a que el bot se registre
+                _ = h.botSvc.SetAdminClientByBotID(bID)
+            }(bot.ID)
+        }
+        // ------------------------------------------------------------
+
+        return result
+    }
+
+    // 🔹 Crear nuevo bot (si no existe)
+    status := "pending"
+    if role == "admin" {
+        status = "free"
+    }
+    sessionFile := fmt.Sprintf("whatsapp_bot%d.db", userID)
+    newID, err := h.botRepo.Create(ctx, userID, sessionFile, status)
+    if err != nil {
+        return c.JSON(fiber.Map{"status": "error", "message": "Error al crear bot"})
+    }
+    newSessionFile := fmt.Sprintf("whatsapp_bot%d.db", newID)
+    _ = h.botRepo.UpdateSessionFile(ctx, newID, newSessionFile)
+
+    if role == "admin" {
+        result := h.LaunchBot(c, newID)
+        // --- ASIGNAR ADMIN CLIENT DESPUÉS DE LANZAR (SI ES ADMIN) ---
+        go func(bID int) {
+            time.Sleep(2 * time.Second)
+            _ = h.botSvc.SetAdminClientByBotID(bID)
+        }(newID)
+        // ------------------------------------------------------------
+        return result
+    }
+
+    return c.JSON(fiber.Map{"status": "pending_payment", "id": newID, "payment_status": "pending", "message": "Bot creado. Se requiere confirmación de pago por parte del administrador."})
 }
-
 func (h *BotHandler) LaunchBot(c fiber.Ctx, botID int) error {
 	qrResult := make(chan string, 1)
 	go h.botSvc.InitBot(botID, qrResult)

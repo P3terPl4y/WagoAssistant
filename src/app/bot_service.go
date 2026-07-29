@@ -333,13 +333,10 @@ func (s *BotService) switchHandler(client *whatsmeow.Client, userKey string, bot
 			err := s.RegisterHistoryal(botID, recipient, txt)
 			if err != nil {
 				s.logger.Error().Msg(err.Error())
-				return
 			}
 			s.notifyAdmin(botID, recipient, txt)
 			if err != nil {
 				s.logger.Error().Msg(err.Error())
-				return
-
 			}
 			err = s.gNotifier.SendNotification(botID, "Un cliente quiere hablar contigo", txt)
 			if err != nil {
@@ -453,48 +450,149 @@ func (s *BotService) respond(client *whatsmeow.Client, userKey string, botID int
 	}
 }
 
+// notifyAdmin envía una notificación al dueño del bot usando el bot administrador.
+// Si el admin bot no está conectado, envía un correo electrónico como fallback.
+// Logs detallados para facilitar la depuración.
+// notifyAdmin envía una notificación al dueño del bot usando el bot administrador.
+// Si el admin bot no está conectado, envía un correo electrónico como fallback.
+// Logs detallados para facilitar la depuración.
 func (s *BotService) notifyAdmin(botID int, clientJID types.JID, msg string) {
-	if s.AdminClient == nil {
-		s.logger.Warn().Msg("Admin bot not available")
-		return
-	}
-	ctx := context.Background()
-	bot, err := s.bots.GetByID(ctx, botID)
-	if err != nil || bot == nil {
-		s.logger.Error().Msg(err.Error())
-		return
-	}
-	user, err := s.users.GetByID(ctx, bot.UserID)
-	if err != nil || user == nil {
-		s.logger.Error().Msg(err.Error())
-		return
-	}
-	phone := strings.TrimPrefix(user.Phone, "+")
-	if phone == "" {
-		return
-	}
-	userJID, err := types.ParseJID(phone + "@s.whatsapp.net")
-	if err != nil {
-		s.logger.Error().Msg(err.Error())
+	// Log de inicio
+	s.logger.Info().
+		Int("bot_id", botID).
+		Str("client_jid", clientJID.String()).
+		Str("message", msg).
+		Msg("📨 Iniciando notificación al administrador")
 
-		return
-	}
-	notif := fmt.Sprintf("📦 Nuevo pedido/cita de %s:\n%s", clientJID, msg)
+	// 1. Obtener el cliente administrador con mutex
+	s.adminMu.RLock()
+	client := s.AdminClient
+	s.adminMu.RUnlock()
 
-	for attempt := 1; attempt <= 3; attempt++ {
-		if s.AdminClient == nil {
-			time.Sleep(2 * time.Second)
-			continue
+	if client == nil {
+		s.logger.Warn().
+			Int("bot_id", botID).
+			Msg("⚠️ AdminClient es nil (no existe)")
+	} else {
+		s.logger.Info().
+			Int("bot_id", botID).
+			Bool("is_connected", client.IsConnected()).
+			Str("admin_jid", s.AdminJID.String()).
+			Msg("🔍 AdminClient obtenido")
+	}
+
+	// 2. Verificar si el admin bot existe y está conectado
+	if client != nil && client.IsConnected() {
+		s.logger.Info().
+			Int("bot_id", botID).
+			Msg("✅ Admin bot está CONECTADO. Intentando enviar por WhatsApp...")
+
+		// Obtener el usuario dueño del bot (destinatario de la notificación)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		user, err := s.users.GetUserByBotID(ctx, botID)
+		if err != nil || user == nil {
+			s.logger.Error().
+				Err(err).
+				Int("bot_id", botID).
+				Msg("❌ No se pudo obtener el usuario del bot. Enviando correo de fallback.")
+			goto sendEmailFallback
 		}
-		_, err = s.AdminClient.SendMessage(context.Background(), userJID, &waE2E.Message{Conversation: &notif})
+
+		phone := strings.TrimPrefix(user.Phone, "+")
+		if phone == "" {
+			s.logger.Warn().
+				Int("user_id", user.ID).
+				Str("username", user.Username).
+				Msg("⚠️ El usuario no tiene número de teléfono. Enviando correo de fallback.")
+			goto sendEmailFallback
+		}
+
+		userJID, err := types.ParseJID(phone + "@s.whatsapp.net")
+		if err != nil {
+			s.logger.Error().
+				Err(err).
+				Str("phone", phone).
+				Msg("❌ JID inválido. Enviando correo de fallback.")
+			goto sendEmailFallback
+		}
+
+		// Construir mensaje
+		notif := fmt.Sprintf("📦 Nuevo pedido/cita de %s:\n%s", clientJID, msg)
+		s.logger.Debug().
+			Str("whatsapp_message", notif).
+			Msg("📝 Mensaje preparado para WhatsApp")
+
+		// Enviar por WhatsApp con timeout
+		sendCtx, sendCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer sendCancel()
+
+		s.logger.Info().
+			Str("to", userJID.String()).
+			Str("phone", user.Phone).
+			Msg("📤 Enviando mensaje por WhatsApp...")
+
+		_, err = client.SendMessage(sendCtx, userJID, &waE2E.Message{Conversation: &notif})
 		if err == nil {
-			s.logger.Info().Str("phone", user.Phone).Int("bot_id", botID).Msg("Notification sent to bot owner")
+			s.logger.Info().
+				Str("phone", user.Phone).
+				Int("bot_id", botID).
+				Msg("✅ Notificación enviada EXITOSAMENTE por WhatsApp")
 			return
 		}
-		s.logger.Warn().Int("attempt", attempt).Err(err).Msg("Notification send failed")
-		time.Sleep(time.Duration(attempt*2) * time.Second)
+
+		s.logger.Error().
+			Err(err).
+			Str("phone", user.Phone).
+			Msg("❌ Falló el envío por WhatsApp. Intentando correo de fallback...")
+	} else {
+		s.logger.Warn().
+			Int("bot_id", botID).
+			Msg("⚠️ Admin bot NO ESTÁ CONECTADO. Usando correo electrónico como fallback.")
 	}
-	s.logger.Error().Str("phone", user.Phone).Msg("Failed to send notification after 3 attempts")
+
+sendEmailFallback:
+	// 3. Fallback a correo electrónico (siempre se intenta)
+	if s.gNotifier == nil {
+		s.logger.Error().
+			Int("bot_id", botID).
+			Msg("❌ No hay notificador de correo configurado (gNotifier es nil).")
+		return
+	}
+
+	s.logger.Info().
+		Int("bot_id", botID).
+		Msg("📧 Enviando notificación por correo electrónico...")
+
+	// Construir cuerpo del correo
+	emailSubject := "📬 Nuevo pedido/cita - FALLBACK"
+	emailBody := fmt.Sprintf(
+		"🔔 Se ha recibido un nuevo pedido o solicitud de cita.\n\n"+
+			"📌 Cliente: %s\n"+
+			"📝 Mensaje: %s\n"+
+			"🤖 Bot ID: %d\n"+
+			"📅 Fecha: %s\n\n"+
+			"Este es un mensaje automático enviado porque el bot administrador no estaba disponible.",
+		clientJID.String(),
+		msg,
+		botID,
+		time.Now().Format("2006-01-02 15:04:05"),
+	)
+
+	err := s.gNotifier.SendAdminNotification(emailSubject, emailBody)
+	if err != nil {
+		s.logger.Error().
+			Err(err).
+			Int("bot_id", botID).
+			Msg("❌ Error al enviar correo electrónico de fallback.")
+		return
+	}
+
+	s.logger.Info().
+		Int("bot_id", botID).
+		Str("admin_email", os.Getenv("ADMIN_EMAIL")).
+		Msg("✅ Notificación enviada EXITOSAMENTE por correo electrónico (fallback)")
 }
 
 // runLifecycle monitors subscription and blocked status, disconnecting when needed.
@@ -609,4 +707,44 @@ func (s *BotService) RegisterHistoryal(botID int, recipient types.JID, txt strin
 	s.logger.Info().Msg(fmt.Sprintf("Pedido guardado para %d: %s", p.ID, u.Username))
 	return nil
 
+}
+
+// SetAdminClientByBotID asigna el cliente del bot dado como AdminClient si el bot pertenece a un admin.
+func (s *BotService) SetAdminClientByBotID(botID int) error {
+	ctx := context.Background()
+
+	// Verificar que el bot existe
+	bot, err := s.bots.GetByID(ctx, botID)
+	if err != nil || bot == nil {
+		return fmt.Errorf("bot not found")
+	}
+
+	// Verificar que el usuario es admin
+	user, err := s.users.GetByID(ctx, bot.UserID)
+	if err != nil || user == nil {
+		return fmt.Errorf("user not found")
+	}
+	if user.Role != "admin" {
+		return fmt.Errorf("user is not admin")
+	}
+
+	// Obtener el cliente activo del bot desde BotManager
+	client := s.botMgr.GetClient(botID)
+	if client == nil {
+		return fmt.Errorf("client not active for bot %d", botID)
+	}
+
+	// Asignar como AdminClient con mutex
+	s.adminMu.Lock()
+	s.AdminClient = client
+	s.AdminJID = *client.Store.ID
+	s.AdminBotID = botID
+	s.adminMu.Unlock()
+
+	s.logger.Info().
+		Int("bot_id", botID).
+		Str("jid", s.AdminJID.String()).
+		Msg("✅ Admin client set successfully")
+
+	return nil
 }
