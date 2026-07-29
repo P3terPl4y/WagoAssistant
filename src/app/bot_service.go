@@ -455,14 +455,16 @@ func (s *BotService) respond(client *whatsmeow.Client, userKey string, botID int
 // notifyAdmin envía una notificación al dueño del bot usando el bot administrador.
 // Si el admin bot no está conectado, envía un correo electrónico como fallback.
 // Logs detallados para facilitar la depuración.
+// notifyAdmin envía una notificación al dueño del bot usando el bot administrador.
+// Si el admin bot no está conectado, envía un correo electrónico como fallback.
+// Logs detallados para facilitar la depuración.
 func (s *BotService) notifyAdmin(botID int, clientJID types.JID, msg string) {
-    log := s.logger.With().
+    // Log de inicio
+    s.logger.Info().
         Int("bot_id", botID).
         Str("client_jid", clientJID.String()).
         Str("message", msg).
-        Logger()
-
-    log.Info().Msg("📨 Iniciando notificación al administrador")
+        Msg("📨 Iniciando notificación al administrador")
 
     // 1. Obtener el cliente administrador con mutex
     s.adminMu.RLock()
@@ -470,9 +472,12 @@ func (s *BotService) notifyAdmin(botID int, clientJID types.JID, msg string) {
     s.adminMu.RUnlock()
 
     if client == nil {
-        log.Warn().Msg("⚠️ AdminClient es nil (no existe)")
+        s.logger.Warn().
+            Int("bot_id", botID).
+            Msg("⚠️ AdminClient es nil (no existe)")
     } else {
-        log.Info().
+        s.logger.Info().
+            Int("bot_id", botID).
             Bool("is_connected", client.IsConnected()).
             Str("admin_jid", s.AdminJID.String()).
             Msg("🔍 AdminClient obtenido")
@@ -480,7 +485,9 @@ func (s *BotService) notifyAdmin(botID int, clientJID types.JID, msg string) {
 
     // 2. Verificar si el admin bot existe y está conectado
     if client != nil && client.IsConnected() {
-        log.Info().Msg("✅ Admin bot está CONECTADO. Intentando enviar por WhatsApp...")
+        s.logger.Info().
+            Int("bot_id", botID).
+            Msg("✅ Admin bot está CONECTADO. Intentando enviar por WhatsApp...")
 
         // Obtener el usuario dueño del bot (destinatario de la notificación)
         ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -488,7 +495,7 @@ func (s *BotService) notifyAdmin(botID int, clientJID types.JID, msg string) {
 
         user, err := s.users.GetUserByBotID(ctx, botID)
         if err != nil || user == nil {
-            log.Error().
+            s.logger.Error().
                 Err(err).
                 Int("bot_id", botID).
                 Msg("❌ No se pudo obtener el usuario del bot. Enviando correo de fallback.")
@@ -497,7 +504,7 @@ func (s *BotService) notifyAdmin(botID int, clientJID types.JID, msg string) {
 
         phone := strings.TrimPrefix(user.Phone, "+")
         if phone == "" {
-            log.Warn().
+            s.logger.Warn().
                 Int("user_id", user.ID).
                 Str("username", user.Username).
                 Msg("⚠️ El usuario no tiene número de teléfono. Enviando correo de fallback.")
@@ -506,7 +513,7 @@ func (s *BotService) notifyAdmin(botID int, clientJID types.JID, msg string) {
 
         userJID, err := types.ParseJID(phone + "@s.whatsapp.net")
         if err != nil {
-            log.Error().
+            s.logger.Error().
                 Err(err).
                 Str("phone", phone).
                 Msg("❌ JID inválido. Enviando correo de fallback.")
@@ -515,42 +522,50 @@ func (s *BotService) notifyAdmin(botID int, clientJID types.JID, msg string) {
 
         // Construir mensaje
         notif := fmt.Sprintf("📦 Nuevo pedido/cita de %s:\n%s", clientJID, msg)
-        log.Debug().Str("whatsapp_message", notif).Msg("📝 Mensaje preparado para WhatsApp")
+        s.logger.Debug().
+            Str("whatsapp_message", notif).
+            Msg("📝 Mensaje preparado para WhatsApp")
 
         // Enviar por WhatsApp con timeout
         sendCtx, sendCancel := context.WithTimeout(context.Background(), 10*time.Second)
         defer sendCancel()
 
-        log.Info().
+        s.logger.Info().
             Str("to", userJID.String()).
             Str("phone", user.Phone).
             Msg("📤 Enviando mensaje por WhatsApp...")
 
         _, err = client.SendMessage(sendCtx, userJID, &waE2E.Message{Conversation: &notif})
         if err == nil {
-            log.Info().
+            s.logger.Info().
                 Str("phone", user.Phone).
                 Int("bot_id", botID).
                 Msg("✅ Notificación enviada EXITOSAMENTE por WhatsApp")
             return
         }
 
-        log.Error().
+        s.logger.Error().
             Err(err).
             Str("phone", user.Phone).
             Msg("❌ Falló el envío por WhatsApp. Intentando correo de fallback...")
     } else {
-        log.Warn().Msg("⚠️ Admin bot NO ESTÁ CONECTADO. Usando correo electrónico como fallback.")
+        s.logger.Warn().
+            Int("bot_id", botID).
+            Msg("⚠️ Admin bot NO ESTÁ CONECTADO. Usando correo electrónico como fallback.")
     }
 
 sendEmailFallback:
     // 3. Fallback a correo electrónico (siempre se intenta)
     if s.gNotifier == nil {
-        log.Error().Msg("❌ No hay notificador de correo configurado (gNotifier es nil).")
+        s.logger.Error().
+            Int("bot_id", botID).
+            Msg("❌ No hay notificador de correo configurado (gNotifier es nil).")
         return
     }
 
-    log.Info().Msg("📧 Enviando notificación por correo electrónico...")
+    s.logger.Info().
+        Int("bot_id", botID).
+        Msg("📧 Enviando notificación por correo electrónico...")
 
     // Construir cuerpo del correo
     emailSubject := "📬 Nuevo pedido/cita - FALLBACK"
@@ -569,13 +584,14 @@ sendEmailFallback:
 
     err := s.gNotifier.SendAdminNotification(emailSubject, emailBody)
     if err != nil {
-        log.Error().
+        s.logger.Error().
             Err(err).
+            Int("bot_id", botID).
             Msg("❌ Error al enviar correo electrónico de fallback.")
         return
     }
 
-    log.Info().
+    s.logger.Info().
         Int("bot_id", botID).
         Str("admin_email", os.Getenv("ADMIN_EMAIL")).
         Msg("✅ Notificación enviada EXITOSAMENTE por correo electrónico (fallback)")
