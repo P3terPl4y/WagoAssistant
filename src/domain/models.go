@@ -12,6 +12,13 @@ type User struct {
 	Role         string
 	CreatedAt    time.Time
 }
+type Pedido struct {
+	ID        int
+	UserID    string
+	Client    string
+	Text      string
+	CreatedAt time.Time
+}
 
 // Bot represents a WhatsApp bot instance owned by a user.
 type Bot struct {

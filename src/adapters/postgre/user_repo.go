@@ -58,11 +58,11 @@ func (r *UserRepo) Create(ctx context.Context, username, email, phone, passwordH
 	}
 	return r.GetByID(ctx, id)
 }
-func (r *UserRepo) CreateHistoryPedidos(ctx context.Context, userID int, cliente string, pedido string) (*domain.User, error) {
+func (r *UserRepo) CreateHistoryPedidos(ctx context.Context, userID int, client string, pedido string) (*domain.User, error) {
 	var id int
 	err := r.db.QueryRowContext(ctx,
-		`INSERT INTO pedidos (user_id, cliente, pedido) VALUES ($1, $2, $3,) RETURNING id`,
-		userID, cliente, pedido).Scan(&id)
+		`INSERT INTO pedidos (user_id, client, pedido) VALUES ($1, $2, $3) RETURNING id`,
+		userID, client, pedido).Scan(&id)
 	if err != nil {
 		return nil, err
 	}
@@ -104,23 +104,23 @@ func (r *UserRepo) ListAll(ctx context.Context, limit string, offset string) ([]
 	}
 	return users, nil
 }
-func (r *UserRepo) ListAllHistory(ctx context.Context, userID int, limit string, offset string) ([]domain.User, error) {
+func (r *UserRepo) ListAllHistory(ctx context.Context, userID int, limit string, offset string) ([]domain.Pedido, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT client, pedido, created_at FROM users WHERE user_id=$1 ORDER BY id OFFSET $2 LIMIT $3`,
+		`SELECT * FROM users WHERE user_id=$1 ORDER BY id OFFSET $2 LIMIT $3`,
 		userID, offset, limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var users []domain.User
+	var pedido []domain.Pedido
 	for rows.Next() {
-		var u domain.User
-		if err := rows.Scan(&u.ID, &u.Username, &u.Email, &u.Phone, &u.PasswordHash, &u.Role, &u.CreatedAt); err != nil {
+		var p domain.Pedido
+		if err := rows.Scan(&p.ID, &p.UserID, &p.Client, &p.Text, &p.CreatedAt); err != nil {
 			return nil, err
 		}
-		users = append(users, u)
+		pedido = append(pedido, p)
 	}
-	return users, nil
+	return pedido, nil
 }
 func (r *UserRepo) CountAdmins(ctx context.Context) (int, error) {
 	var count int
