@@ -955,6 +955,35 @@
                             <i class="fas fa-chevron-down" id="pedidosIcon"></i>
                         </span>
                     </h3>
+
+                    <!-- Controles de paginación -->
+                    <div id="pedidosControls"
+                        style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.5rem; align-items:center;">
+                        <label style="font-size:0.9rem; color:var(--color-text-muted);">Mostrar:</label>
+                        <select id="pedidosLimit"
+                            style="padding:0.3rem 0.6rem; border-radius:0.4rem; border:1px solid var(--color-border); background:var(--color-bg-input); color:var(--color-text-main);">
+                            <option value="10">10</option>
+                            <option value="20" selected>20</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+
+                        <label
+                            style="font-size:0.9rem; color:var(--color-text-muted); margin-left:0.5rem;">Página:</label>
+                        <input type="number" id="pedidosPage" value="1" min="1"
+                            style="width:60px; padding:0.3rem 0.4rem; border-radius:0.4rem; border:1px solid var(--color-border); background:var(--color-bg-input); color:var(--color-text-main);" />
+
+                        <button id="goToPageBtn" class="btn btn-secondary"
+                            style="width:auto; padding:0.3rem 1rem; font-size:0.85rem; border-width:1px;">
+                            <i class="fas fa-arrow-right"></i> Ir a página
+                        </button>
+
+                        <button id="firstPageBtn" class="btn btn-secondary"
+                            style="width:auto; padding:0.3rem 1rem; font-size:0.85rem; border-width:1px;">
+                            <i class="fas fa-fast-backward"></i> Últimos pedidos
+                        </button>
+                    </div>
+
                     <div id="pedidosContainer" style="display:block; transition: all 0.3s ease;">
                         <div id="pedidosList" class="chat-container"
                             style="max-height:400px; overflow-y:auto; padding-right:0.5rem;">
@@ -1565,18 +1594,39 @@
         // ============================================================
         //  PEDIDOS (CHAT) - Carga y Toggle
         // ============================================================
-        let pedidosOffset = 0;
-        const PEDIDOS_LIMIT = 20;
+        // ============================================================
+        //  PEDIDOS (CHAT) - Carga y Toggle con paginación
+        // ============================================================
+        // ============================================================
+        //  PEDIDOS (CHAT) - PAGINACIÓN AVANZADA
+        // ============================================================
+        let pedidosOffset = 0;    // offset actual (número de registros saltados)
+        let pedidosLimit = 20;    // límite actual
+        let currentPage = 1;      // página actual (1-indexado)
 
-        function loadPedidos(append = false) {
+        function loadPedidos(append = false, resetOffset = false) {
             if (!window.userID) return;
             const list = document.getElementById('pedidosList');
             const loadBtn = document.getElementById('loadMorePedidos');
+            const limit = parseInt(document.getElementById('pedidosLimit').value, 10) || 20;
+            const page = parseInt(document.getElementById('pedidosPage').value, 10) || 1;
+
+            // Si resetOffset es true, calcular offset desde la página
+            let offset;
+            if (resetOffset) {
+                offset = (page - 1) * limit;
+                pedidosOffset = offset;
+            } else {
+                offset = pedidosOffset;
+            }
+
             if (!append) {
                 list.innerHTML = '<div class="chat-empty">Cargando...</div>';
-                pedidosOffset = 0;
+                // Actualizar offset solo si no es append
+                // pero si es append, offset ya está en pedidosOffset
             }
-            fetch(`/pedidos?&limit=${PEDIDOS_LIMIT}&offset=${pedidosOffset}`, {
+
+            fetch(`/pedidos?user_id=${window.userID}&limit=${limit}&offset=${offset}`, {
                 headers: { 'X-CSRF-Token': getCsrfToken() }
             })
                 .then(res => {
@@ -1600,13 +1650,21 @@
                 `;
                             list.appendChild(div);
                         });
-                        pedidosOffset += data.pedidos.length;
-                        if (data.pedidos.length < PEDIDOS_LIMIT) {
+
+                        // Actualizar offset solo si no es append (porque en append se mantiene)
+                        if (!append) {
+                            pedidosOffset = offset + data.pedidos.length;
+                        } else {
+                            pedidosOffset += data.pedidos.length;
+                        }
+
+                        // Mostrar/ocultar botón "Cargar más"
+                        if (data.pedidos.length < limit) {
                             loadBtn.style.display = 'none';
                         } else {
                             loadBtn.style.display = 'inline-block';
                         }
-                        // Scroll al final si append
+
                         if (append) {
                             list.scrollTop = list.scrollHeight;
                         }
@@ -1625,6 +1683,71 @@
                     loadBtn.style.display = 'none';
                 });
         }
+
+        // --- Eventos de paginación ---
+
+        // Cambiar límite
+        document.getElementById('pedidosLimit').addEventListener('change', function () {
+            // Resetear a la primera página
+            document.getElementById('pedidosPage').value = 1;
+            currentPage = 1;
+            pedidosOffset = 0;
+            loadPedidos(false, true);
+        });
+
+        // Botón "Ir a página"
+        document.getElementById('goToPageBtn').addEventListener('click', function () {
+            const page = parseInt(document.getElementById('pedidosPage').value, 10) || 1;
+            if (page < 1) {
+                document.getElementById('pedidosPage').value = 1;
+                return;
+            }
+            currentPage = page;
+            pedidosOffset = (page - 1) * parseInt(document.getElementById('pedidosLimit').value, 10);
+            loadPedidos(false, false);
+        });
+
+        // Botón "Últimos pedidos" (primera página)
+        document.getElementById('firstPageBtn').addEventListener('click', function () {
+            document.getElementById('pedidosPage').value = 1;
+            currentPage = 1;
+            pedidosOffset = 0;
+            loadPedidos(false, true);
+        });
+
+        // Botón "Cargar más" (siguiente página)
+        document.getElementById('loadMorePedidos').addEventListener('click', function () {
+            // Incrementar la página mostrada
+            currentPage = Math.floor(pedidosOffset / parseInt(document.getElementById('pedidosLimit').value, 10)) + 1;
+            document.getElementById('pedidosPage').value = currentPage;
+            loadPedidos(true, false);
+        });
+
+        // Carga inicial al expandir (ya existe, pero ajustamos)
+        document.addEventListener('DOMContentLoaded', function () {
+            const toggle = document.getElementById('pedidosToggle');
+            const container = document.getElementById('pedidosContainer');
+            const icon = document.getElementById('pedidosIcon');
+            if (toggle && container) {
+                toggle.addEventListener('click', function () {
+                    if (container.style.display === 'none' || container.classList.contains('collapsed')) {
+                        container.style.display = 'block';
+                        container.classList.remove('collapsed');
+                        icon.classList.replace('fa-chevron-right', 'fa-chevron-down');
+                        // Si está vacío, cargar pedidos al abrir
+                        if (document.getElementById('pedidosList').children.length <= 1) {
+                            loadPedidos(false, true);
+                        }
+                    } else {
+                        container.style.display = 'none';
+                        container.classList.add('collapsed');
+                        icon.classList.replace('fa-chevron-down', 'fa-chevron-right');
+                    }
+                });
+                // Carga inicial (si no se cargó antes)
+                loadPedidos(false, true);
+            }
+        });
 
         // Toggle colapsar/expandir
         document.addEventListener('DOMContentLoaded', function () {
