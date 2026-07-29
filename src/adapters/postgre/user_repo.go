@@ -4,6 +4,7 @@ import (
 	"App/src/domain"
 	"context"
 	"database/sql"
+	"fmt"
 )
 
 // UserRepo implements ports.UserRepository using PostgreSQL.
@@ -64,6 +65,7 @@ func (r *UserRepo) CreateHistoryPedidos(ctx context.Context, userID int, client 
 		`INSERT INTO pedidos (user_id, client, pedido) VALUES ($1, $2, $3) RETURNING id`,
 		userID, client, pedido).Scan(&id)
 	if err != nil {
+		fmt.Println(err)
 		return nil, err
 	}
 	return r.GetByID(ctx, id)
@@ -106,7 +108,7 @@ func (r *UserRepo) ListAll(ctx context.Context, limit string, offset string) ([]
 }
 func (r *UserRepo) ListAllHistory(ctx context.Context, userID int, limit string, offset string) ([]domain.Pedido, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT * FROM users WHERE user_id=$1 ORDER BY id OFFSET $2 LIMIT $3`,
+		`SELECT * FROM pedidos WHERE user_id=$1 ORDER BY id OFFSET $2 LIMIT $3`,
 		userID, offset, limit)
 	if err != nil {
 		return nil, err
