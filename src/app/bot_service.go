@@ -333,12 +333,13 @@ func (s *BotService) switchHandler(client *whatsmeow.Client, userKey string, bot
 			err := s.RegisterHistoryal(botID, recipient, txt)
 			if err != nil {
 				s.logger.Error().Msg(err.Error())
-				//return
+				return
 			}
 			s.notifyAdmin(botID, recipient, txt)
 			if err != nil {
 				s.logger.Error().Msg(err.Error())
 				return
+
 			}
 			err = s.gNotifier.SendNotification(botID, "Un cliente quiere hablar contigo", txt)
 			if err != nil {
@@ -605,7 +606,7 @@ func (s *BotService) RegisterHistoryal(botID int, recipient types.JID, txt strin
 		s.logger.Error().Msg(err.Error())
 		return err
 	}
-	s.logger.Info().Msg(fmt.Sprintf("Pedido guardado para %s: %s", p.UserID, p.Client))
+	s.logger.Info().Msg(fmt.Sprintf("Pedido guardado para %d: %s", p.ID, u.Username))
 	return nil
 
 }
