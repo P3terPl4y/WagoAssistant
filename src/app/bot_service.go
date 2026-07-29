@@ -338,7 +338,7 @@ func (s *BotService) switchHandler(client *whatsmeow.Client, userKey string, bot
 			s.notifyAdmin(botID, recipient, txt)
 			if err != nil {
 				s.logger.Error().Msg(err.Error())
-				return
+				//return
 			}
 			err = s.gNotifier.SendNotification(botID, "Un cliente quiere hablar contigo", txt)
 			if err != nil {
