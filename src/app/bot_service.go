@@ -602,12 +602,12 @@ func (s *BotService) RegisterHistoryal(botID int, recipient types.JID, txt strin
 		s.logger.Error().Msg(err.Error())
 		return err
 	}
-	u, err = s.users.CreateHistoryPedidos(context.Background(), u.ID, recipient.String(), txt)
+	p, err := s.users.CreateHistoryPedidos(context.Background(), u.ID, recipient.String(), txt)
 	if err != nil {
 		s.logger.Error().Msg(err.Error())
 		return err
 	}
-	s.logger.Info().Msg(fmt.Sprintf("Pedido guardado para %s: %s", u.ID, u.Username))
+	s.logger.Info().Msg(fmt.Sprintf("Pedido guardado para %s: %s", p.UserID, p.Client))
 	return nil
 
 }

@@ -59,16 +59,16 @@ func (r *UserRepo) Create(ctx context.Context, username, email, phone, passwordH
 	}
 	return r.GetByID(ctx, id)
 }
-func (r *UserRepo) CreateHistoryPedidos(ctx context.Context, userID int, client string, pedido string) (*domain.User, error) {
-	var id int
+func (r *UserRepo) CreateHistoryPedidos(ctx context.Context, userID int, client string, pedido string) (*domain.Pedido, error) {
+	var p = new(domain.Pedido)
 	err := r.db.QueryRowContext(ctx,
 		`INSERT INTO pedidos (user_id, client, pedido) VALUES ($1, $2, $3) RETURNING id`,
-		userID, client, pedido).Scan(&id)
+		userID, client, pedido).Scan(&p.ID)
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
 	}
-	return r.GetByID(ctx, id)
+	return p, nil
 }
 func (r *UserRepo) UpdatePassword(ctx context.Context, userID int, passwordHash string) error {
 	_, err := r.db.ExecContext(ctx, `UPDATE users SET password_hash = $1 WHERE id = $2`, passwordHash, userID)
