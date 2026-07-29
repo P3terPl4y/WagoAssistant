@@ -741,6 +741,7 @@ func (s *BotService) SetAdminClientByBotID(botID int) error {
     s.adminMu.Lock()
     s.AdminClient = client
     s.AdminJID = *client.Store.ID
+    s.AdminBotID=botID
     s.adminMu.Unlock()
 
     s.logger.Info().
