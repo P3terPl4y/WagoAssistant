@@ -1604,7 +1604,7 @@
         let pedidosLimit = 20;    // límite actual
         let currentPage = 1;      // página actual (1-indexado)
 
-        function loadPedidos(append = false, resetOffset = false) {
+        async function loadPedidos(append = false, resetOffset = false) {
             if (!window.userID) return;
             const list = document.getElementById('pedidosList');
             const loadBtn = document.getElementById('loadMorePedidos');
@@ -1626,62 +1626,43 @@
                 // pero si es append, offset ya está en pedidosOffset
             }
 
-            fetch(`/pedidos?user_id=${window.userID}&limit=${limit}&offset=${offset}`, {
+            const response = await fetch(`/pedidos?user_id=${window.userID}&limit=${limit}&offset=${offset}`, {
                 headers: { 'X-CSRF-Token': getCsrfToken() }
             })
-                .then(res => {
-                    if (!res.ok) throw new Error('Error al cargar pedidos');
-                    return res.json();
-                })
-                .then(data => {
-                    if (data.pedidos && data.pedidos.length > 0) {
-                        if (!append) list.innerHTML = '';
-                        data.pedidos.forEach(p => {
-                            const div = document.createElement('div');
-                            div.className = 'chat-message';
-                            const date = new Date(p.created_at);
-                            const timeStr = date.toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
-                            div.innerHTML = `
+            const data = await response.json()
+            if (!append) list.innerHTML = '';
+            data.forEach(p => {
+                const div = document.createElement('div');
+                div.className = 'chat-message';
+                const date = new Date(p.created_at);
+                const timeStr = date.toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+                div.innerHTML = `
                     <div class="msg-header">
                         <span class="client-name"><i class="fas fa-user"></i> ${p.client}</span>
                     </div>
                     <div class="msg-body">${p.pedido}</div>
                     <div class="msg-time">${timeStr}</div>
                 `;
-                            list.appendChild(div);
-                        });
+                list.appendChild(div);
+            });
 
-                        // Actualizar offset solo si no es append (porque en append se mantiene)
-                        if (!append) {
-                            pedidosOffset = offset + data.pedidos.length;
-                        } else {
-                            pedidosOffset += data.pedidos.length;
-                        }
+            // Actualizar offset solo si no es append (porque en append se mantiene)
+            if (!append) {
+                pedidosOffset = offset + data.pedidos.length;
+            } else {
+                pedidosOffset += data.pedidos.length;
+            }
 
-                        // Mostrar/ocultar botón "Cargar más"
-                        if (data.pedidos.length < limit) {
-                            loadBtn.style.display = 'none';
-                        } else {
-                            loadBtn.style.display = 'inline-block';
-                        }
+            // Mostrar/ocultar botón "Cargar más"
+            if (data.pedidos.length < limit) {
+                loadBtn.style.display = 'none';
+            } else {
+                loadBtn.style.display = 'inline-block';
+            }
 
-                        if (append) {
-                            list.scrollTop = list.scrollHeight;
-                        }
-                    } else {
-                        if (!append) {
-                            list.innerHTML = '<div class="chat-empty">No hay pedidos registrados aún.</div>';
-                        }
-                        loadBtn.style.display = 'none';
-                    }
-                })
-                .catch(err => {
-                    console.error(err);
-                    if (!append) {
-                        list.innerHTML = '<div class="chat-empty">Error al cargar pedidos.</div>';
-                    }
-                    loadBtn.style.display = 'none';
-                });
+            if (append) {
+                list.scrollTop = list.scrollHeight;
+            }
         }
 
         // --- Eventos de paginación ---
