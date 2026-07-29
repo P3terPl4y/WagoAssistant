@@ -709,3 +709,44 @@ func (s *BotService) RegisterHistoryal(botID int, recipient types.JID, txt strin
 	return nil
 
 }
+
+
+
+// SetAdminClientByBotID asigna el cliente del bot dado como AdminClient si el bot pertenece a un admin.
+func (s *BotService) SetAdminClientByBotID(botID int) error {
+    ctx := context.Background()
+
+    // Verificar que el bot existe
+    bot, err := s.bots.GetByID(ctx, botID)
+    if err != nil || bot == nil {
+        return fmt.Errorf("bot not found")
+    }
+
+    // Verificar que el usuario es admin
+    user, err := s.users.GetByID(ctx, bot.UserID)
+    if err != nil || user == nil {
+        return fmt.Errorf("user not found")
+    }
+    if user.Role != "admin" {
+        return fmt.Errorf("user is not admin")
+    }
+
+    // Obtener el cliente activo del bot desde BotManager
+    client := s.botMgr.GetClient(botID)
+    if client == nil {
+        return fmt.Errorf("client not active for bot %d", botID)
+    }
+
+    // Asignar como AdminClient con mutex
+    s.adminMu.Lock()
+    s.AdminClient = client
+    s.AdminJID = *client.Store.ID
+    s.adminMu.Unlock()
+
+    s.logger.Info().
+        Int("bot_id", botID).
+        Str("jid", s.AdminJID.String()).
+        Msg("✅ Admin client set successfully")
+
+    return nil
+}
