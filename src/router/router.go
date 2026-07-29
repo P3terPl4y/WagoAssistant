@@ -65,7 +65,7 @@ func Setup(
 
 	// ──── Dashboard ────
 	app.Get("/dashboard", handlers.AuthRequired, dashH.Render)
-	app.Get("/pedidos", dashH.ListPedidos)
+	app.Get("/pedidos", handlers.AuthRequired, dashH.ListPedidos)
 	// ──── Bot ────
 	app.Post("/start-bot", handlers.AuthRequired, lim, botH.StartBot)
 	app.Get("/bot/:id/status", handlers.AuthRequired, botH.GetBotIDStatus)
