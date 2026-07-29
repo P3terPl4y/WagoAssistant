@@ -333,7 +333,7 @@ func (s *BotService) switchHandler(client *whatsmeow.Client, userKey string, bot
 			err := s.RegisterHistoryal(botID, recipient, txt)
 			if err != nil {
 				s.logger.Error().Msg(err.Error())
-				return
+				//return
 			}
 			s.notifyAdmin(botID, recipient, txt)
 			if err != nil {
