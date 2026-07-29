@@ -82,7 +82,7 @@ func (h *DashboardHandler) ListPedidos(c fiber.Ctx) error {
 	userID := c.Locals("user_id").(int)
 	user, err := h.userSvc.ListAllHistory(c, userID, limit, offset)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "Error al obtener usuarios"})
+		return c.Status(404).JSON(fiber.Map{"error": "Error al obtener usuarios"})
 	}
 	return c.JSON(user)
 }
