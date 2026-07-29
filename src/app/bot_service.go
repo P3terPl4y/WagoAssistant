@@ -607,6 +607,7 @@ func (s *BotService) RegisterHistoryal(botID int, recipient types.JID, txt strin
 		s.logger.Error().Msg(err.Error())
 		return err
 	}
+	s.logger.Info().Msg(fmt.Sprintf("Pedido guardado para %s: %s", u.ID, u.Username))
 	return nil
 
 }
