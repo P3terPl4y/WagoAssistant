@@ -330,7 +330,9 @@ func (s *BotService) switchHandler(client *whatsmeow.Client, userKey string, bot
 
 		go func() {
 
-			err := s.RegisterHistoryal(botID, recipient, txt)
+			contactName := s.getContactName(client, recipient)
+
+			err := s.RegisterHistoryal(botID, recipient, txt, contactName)
 			if err != nil {
 				s.logger.Error().Msg(err.Error())
 			}
@@ -693,20 +695,36 @@ func (s *BotService) StartAdminBot() {
 		}
 	}()
 }
-func (s *BotService) RegisterHistoryal(botID int, recipient types.JID, txt string) error {
+
+// Dentro de una función que tenga acceso al cliente *whatsmeow.Client
+func (s *BotService) getContactName(client *whatsmeow.Client, jid types.JID) string {
+	contact, err := client.Store.Contacts.GetContact(context.Background(), jid)
+	if err != nil {
+		return "" // o devolver el número si no se encuentra
+	}
+	return contact.FullName
+}
+func (s *BotService) RegisterHistoryal(botID int, recipient types.JID, txt string, userName string) error {
 	u, err := s.users.GetUserByBotID(context.Background(), botID)
 	if err != nil {
-		s.logger.Error().Msg(err.Error())
+		s.logger.Error().Err(err).Msg("Error al obtener usuario dueño del bot")
 		return err
 	}
-	p, err := s.users.CreateHistoryPedidos(context.Background(), u.ID, recipient.String(), txt)
-	if err != nil {
-		s.logger.Error().Msg(err.Error())
-		return err
-	}
-	s.logger.Info().Msg(fmt.Sprintf("Pedido guardado para %d: %s", p.ID, u.Username))
-	return nil
 
+	// Construir el campo "client": número (nombre) o solo número si nombre vacío
+	clientStr := recipient.User
+	if userName != "" {
+		clientStr = fmt.Sprintf("%s (%s)", userName, recipient.User)
+	}
+
+	p, err := s.users.CreateHistoryPedidos(context.Background(), u.ID, clientStr, txt)
+	if err != nil {
+		s.logger.Error().Err(err).Msg("Error al guardar pedido")
+		return err
+	}
+
+	s.logger.Info().Msg(fmt.Sprintf("Pedido guardado para %d: %s", p.ID, clientStr))
+	return nil
 }
 
 // SetAdminClientByBotID asigna el cliente del bot dado como AdminClient si el bot pertenece a un admin.
