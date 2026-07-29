@@ -1576,7 +1576,7 @@
                 list.innerHTML = '<div class="chat-empty">Cargando...</div>';
                 pedidosOffset = 0;
             }
-            fetch(`/api/pedidos?user_id=${window.userID}&limit=${PEDIDOS_LIMIT}&offset=${pedidosOffset}`, {
+            fetch(`/pedidos?&limit=${PEDIDOS_LIMIT}&offset=${pedidosOffset}`, {
                 headers: { 'X-CSRF-Token': getCsrfToken() }
             })
                 .then(res => {
