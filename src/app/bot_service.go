@@ -331,7 +331,8 @@ func (s *BotService) switchHandler(client *whatsmeow.Client, userKey string, bot
 		go func() {
 
 			ctcName, ctcPn := s.getContact(client, recipient)
-
+			fmt.Println(ctcName)
+			fmt.Println(ctcPn)
 			err := s.RegisterHistoryal(botID, recipient, txt, ctcName, ctcPn)
 			if err != nil {
 				s.logger.Error().Msg(err.Error())
