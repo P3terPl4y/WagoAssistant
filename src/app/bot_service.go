@@ -330,9 +330,9 @@ func (s *BotService) switchHandler(client *whatsmeow.Client, userKey string, bot
 
 		go func() {
 
-			contactName := s.getContactName(client, recipient)
+			ctcName, ctcPn := s.getContact(client, recipient)
 
-			err := s.RegisterHistoryal(botID, recipient, txt, contactName)
+			err := s.RegisterHistoryal(botID, recipient, txt, ctcName, ctcPn)
 			if err != nil {
 				s.logger.Error().Msg(err.Error())
 			}
@@ -340,7 +340,7 @@ func (s *BotService) switchHandler(client *whatsmeow.Client, userKey string, bot
 			if err != nil {
 				s.logger.Error().Msg(err.Error())
 			}
-			err = s.gNotifier.SendNotification(botID, "Un cliente quiere hablar contigo", txt)
+			err = s.gNotifier.SendNotification(botID, fmt.Sprintf("Un cliente quiere hablar contigo (%s:%s)", ctcName, ctcPn), txt)
 			if err != nil {
 				s.logger.Error().Msg(err.Error())
 				return
@@ -702,16 +702,35 @@ func (s *BotService) StartAdminBot() {
 	}()
 }
 
+// getPhoneNumber intenta obtener el número de teléfono a partir de un JID.
+// Si el JID es un LID (@lid), lo resuelve usando el mapeo local.
+// Si es un número de teléfono (@s.whatsapp.net), devuelve el User directamente.
+
 // Dentro de una función que tenga acceso al cliente *whatsmeow.Client
-func (s *BotService) getContactName(client *whatsmeow.Client, jid types.JID) string {
+func (s *BotService) getContact(client *whatsmeow.Client, jid types.JID) (string, string) {
 	contact, err := client.Store.Contacts.GetContact(context.Background(), jid)
-	fmt.Println(contact.PushName)
 	if err != nil {
-		return "" // o devolver el número si no se encuentra
+		return contact.PushName, "" // o devolver el número si no se encuentra
 	}
-	return contact.PushName
+	if jid.Server == types.DefaultUserServer { // "s.whatsapp.net"
+		return contact.PushName, jid.User
+	}
+
+	// Si es un LID (@lid), intentar resolverlo a un número de teléfono
+	if jid.Server == types.HiddenUserServer { // "lid"
+		pnJID, err := client.Store.LIDs.GetPNForLID(context.Background(), jid)
+		if err == nil {
+			// pnJID.User contiene el número de teléfono
+			return contact.PushName, pnJID.User
+		}
+		// Si no se puede resolver, se puede devolver el User del LID como fallback
+		return contact.PushName, jid.User
+	}
+
+	// Para otros casos (grupos, etc.), devolver el User
+	return contact.PushName, jid.User
 }
-func (s *BotService) RegisterHistoryal(botID int, recipient types.JID, txt string, userName string) error {
+func (s *BotService) RegisterHistoryal(botID int, recipient types.JID, txt string, userName string, phone string) error {
 	u, err := s.users.GetUserByBotID(context.Background(), botID)
 	if err != nil {
 		s.logger.Error().Err(err).Msg("Error al obtener usuario dueño del bot")
@@ -721,7 +740,7 @@ func (s *BotService) RegisterHistoryal(botID int, recipient types.JID, txt strin
 	// Construir el campo "client": número (nombre) o solo número si nombre vacío
 	clientStr := recipient.User
 	if userName != "" {
-		clientStr = fmt.Sprintf("%s (%s)", userName, recipient.User)
+		clientStr = fmt.Sprintf("%s (%s)", userName, phone)
 	}
 
 	p, err := s.users.CreateHistoryPedidos(context.Background(), u.ID, clientStr, txt)
