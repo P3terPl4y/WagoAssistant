@@ -769,13 +769,11 @@ func (s *BotService) RegisterHistoryal(botID int, recipient types.JID, txt strin
 func (s *BotService) SetAdminClientByBotID(botID int) error {
 	ctx := context.Background()
 
-	// Verificar que el bot existe
 	bot, err := s.bots.GetByID(ctx, botID)
 	if err != nil || bot == nil {
 		return fmt.Errorf("bot not found")
 	}
 
-	// Verificar que el usuario es admin
 	user, err := s.users.GetByID(ctx, bot.UserID)
 	if err != nil || user == nil {
 		return fmt.Errorf("user not found")
@@ -784,28 +782,19 @@ func (s *BotService) SetAdminClientByBotID(botID int) error {
 		return fmt.Errorf("user is not admin")
 	}
 
-	// Obtener el cliente activo del bot desde BotManager
-	client := s.botMgr.GetClient(botID)
-	if client == nil {
-		// El bot aún no está activo, intentar esperar un poco
-		for i := 0; i < 10; i++ {
-			time.Sleep(500 * time.Millisecond)
-			client = s.botMgr.GetClient(botID)
-			if client != nil {
-				break
-			}
+	// Esperar hasta que el cliente esté disponible
+	var client *whatsmeow.Client
+	for i := 0; i < 20; i++ {
+		client = s.botMgr.GetClient(botID)
+		if client != nil && client.Store != nil && client.Store.ID != nil {
+			break
 		}
-		if client == nil {
-			return fmt.Errorf("client not active for bot %d after waiting", botID)
-		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	if client == nil || client.Store == nil || client.Store.ID == nil {
+		return fmt.Errorf("client not active for bot %d after waiting", botID)
 	}
 
-	// Verificar que el cliente tenga sesión
-	if client.Store == nil || client.Store.ID == nil {
-		return fmt.Errorf("client has no valid session")
-	}
-
-	// Asignar como AdminClient con mutex
 	s.adminMu.Lock()
 	s.AdminClient = client
 	s.AdminJID = *client.Store.ID
@@ -822,29 +811,32 @@ func (s *BotService) SetAdminClientByBotID(botID int) error {
 
 // PairBot inicia el proceso de vinculación por código (alternativa al QR).
 // Requiere que el cliente ya esté conectado.
+// PairBot inicia el proceso de vinculación por código (alternativa al QR).
+// Requiere que el cliente ya esté conectado.
 func (s *BotService) PairBot(botID int, phoneNumber string, resultChan chan<- string) {
 	log := s.logger.WithBotID(botID)
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
+	// No usamos defer cancel() aquí, solo cancelamos en errores o al finalizar.
 	bot, err := s.bots.GetByID(ctx, botID)
 	if err != nil || bot == nil {
 		log.Error().Err(err).Msg("Bot not found")
+		cancel()
 		resultChan <- "ERROR: bot not found"
 		return
 	}
-
 	if bot.Blocked || (bot.PaymentStatus != "free" && bot.PaymentStatus != "paid") {
 		log.Warn().Msg("Bot not eligible for pairing")
+		cancel()
 		resultChan <- "ERROR: bot not eligible"
 		return
 	}
 
-	// Obtener contenedor y dispositivo
 	container := s.GetContainer(botID)
 	deviceStore, err := container.GetFirstDevice(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get device")
+		cancel()
 		resultChan <- "ERROR: device error"
 		return
 	}
@@ -853,20 +845,60 @@ func (s *BotService) PairBot(botID int, phoneNumber string, resultChan chan<- st
 	client := whatsmeow.NewClient(deviceStore, clientLog)
 	s.botMgr.Register(botID, client, cancel)
 
-	// 1. Conectar primero (requisito para PairPhone)
+	// Si ya hay sesión, restaurar
+	if client.Store.ID != nil {
+		log.Info().Msg("Session already exists, restoring...")
+		if err := s.ConnectWithRetry(client); err != nil {
+			log.Error().Err(err).Msg("Failed to restore session")
+			cancel()
+			resultChan <- "ERROR: restore failed"
+			return
+		}
+		// Añadir manejador de eventos
+		s.addEventHandlers(client, botID, ctx, cancel)
+		s.runLifecycle(botID, client, ctx, cancel)
+		// Si sale del ciclo, cancelar y limpiar
+		cancel()
+		s.botMgr.Unregister(botID)
+		resultChan <- "SESSION_EXISTS"
+		return
+	}
+
+	// Conectar
 	if err := s.ConnectWithRetry(client); err != nil {
 		log.Error().Err(err).Msg("Connection failed")
+		cancel()
 		resultChan <- "ERROR: connection failed"
 		return
 	}
 
-	// 2. Solicitar código de vinculación
-	// Parámetros: phone (solo dígitos), showPushNotification, clientType, clientDisplayName
-	// clientType puede ser: PairClientChrome, PairClientFirefox, PairClientEdge, PairClientOpera
-	// clientDisplayName debe tener formato "Browser (OS)"
-	code, err := client.PairPhone(ctx, phoneNumber, true, whatsmeow.PairClientChrome, "Chrome (Linux)")
+	// Esperar a que la conexión esté estable
+	connected := false
+	for i := 0; i < 10; i++ {
+		if client.IsConnected() {
+			connected = true
+			break
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	if !connected {
+		log.Error().Msg("Client not connected after waiting")
+		cancel()
+		resultChan <- "ERROR: not connected"
+		return
+	}
+	time.Sleep(2 * time.Second) // espera extra para handshake
+
+	// Solicitar código
+	code, err := client.PairPhone(ctx,
+		phoneNumber,
+		true,
+		whatsmeow.PairClientChrome,
+		"Chrome (Linux)",
+	)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get pairing code")
+		cancel()
 		resultChan <- "ERROR: pairing failed"
 		return
 	}
@@ -874,12 +906,10 @@ func (s *BotService) PairBot(botID int, phoneNumber string, resultChan chan<- st
 	log.Info().Str("code", code).Msg("Pairing code generated")
 	resultChan <- code
 
-	// 3. Esperar a que se complete la vinculación (opcional: monitorear evento)
-	// El cliente se vincula automáticamente cuando el usuario introduce el código.
-	// Puedes usar un ticker para verificar si client.Store.ID != nil
+	// Esperar vinculación
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
-	timeout := time.After(65 * time.Second) // El código expira a los 60s
+	timeout := time.After(65 * time.Second)
 
 	for {
 		select {
@@ -888,16 +918,51 @@ func (s *BotService) PairBot(botID int, phoneNumber string, resultChan chan<- st
 			return
 		case <-timeout:
 			log.Warn().Msg("Pairing code expired")
+			cancel()
 			resultChan <- "TIMEOUT"
 			client.Disconnect()
 			return
 		case <-ticker.C:
 			if client.Store.ID != nil {
 				log.Info().Str("jid", client.Store.ID.String()).Msg("Pairing successful")
+				// Añadir manejadores de eventos
+				s.addEventHandlers(client, botID, ctx, cancel)
+				// Ejecutar el ciclo de vida, que bloqueará hasta que se cancele el contexto
 				s.runLifecycle(botID, client, ctx, cancel)
+				// Si se sale del ciclo (por cancelación), limpiar
+				cancel()
+				s.botMgr.Unregister(botID)
 				resultChan <- "SUCCESS"
 				return
 			}
 		}
 	}
+}
+
+// addEventHandlers registra los manejadores de eventos comunes (mensajes, desconexión, etc.)
+func (s *BotService) addEventHandlers(client *whatsmeow.Client, botID int, ctx context.Context, cancel context.CancelFunc) {
+	log := s.logger.WithBotID(botID)
+	client.AddEventHandler(func(evt interface{}) {
+		switch v := evt.(type) {
+		case *events.Message:
+			s.handleMessage(client, botID, v, ctx)
+		case *events.Disconnected:
+			log.Warn().Msg("Disconnected, attempting reconnect")
+			go func() {
+				time.Sleep(3 * time.Second)
+				if !s.botMgr.IsActive(botID) {
+					return
+				}
+				if err := s.ConnectWithRetry(client); err != nil {
+					log.Error().Err(err).Msg("Reconnect failed")
+					cancel()
+				} else {
+					log.Info().Msg("Reconnected successfully")
+				}
+			}()
+		case *events.StreamReplaced:
+			log.Warn().Msg("Session replaced by another device")
+			cancel()
+		}
+	})
 }
