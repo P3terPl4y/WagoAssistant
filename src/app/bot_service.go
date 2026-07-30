@@ -315,6 +315,13 @@ func (s *BotService) switchHandler(client *whatsmeow.Client, userKey string, bot
 		switch {
 		case txt == "-start" || txt == "Hola bot" || txt == "Activate":
 			delete(s.blocked, recipient)
+			res := "🤖 Hola de nuevo"
+			_, err := client.SendMessage(context.Background(), recipient, &waE2E.Message{Conversation: &res})
+			if err != nil {
+				s.logger.Error().Err(err).Str("recipient", recipient.String()).Msg("Failed to send message")
+			} else {
+				s.logger.Info().Str("recipient", recipient.String()).Msg("Response sent")
+			}
 			s.logger.Info().Int("bot_id", botID).Str("recipient", recipient.String()).Msg("Bot resumed")
 		case strings.Contains(txt, "@Bot"):
 			go s.respond(client, userKey, botID, recipient, txt)
@@ -325,6 +332,13 @@ func (s *BotService) switchHandler(client *whatsmeow.Client, userKey string, bot
 	switch {
 	case txt == "-stop" || txt == "Adios bot" || txt == "Desactivate":
 		s.blocked[recipient] = true
+		res := "🤖 Hasta luego"
+		_, err := client.SendMessage(context.Background(), recipient, &waE2E.Message{Conversation: &res})
+		if err != nil {
+			s.logger.Error().Err(err).Str("recipient", recipient.String()).Msg("Failed to send message")
+		} else {
+			s.logger.Info().Str("recipient", recipient.String()).Msg("Response sent")
+		}
 		s.logger.Info().Int("bot_id", botID).Str("recipient", recipient.String()).Msg("Bot paused")
 	case strings.Contains(txt, "Pedido:") || strings.Contains(txt, "Agendar Cita:"):
 
