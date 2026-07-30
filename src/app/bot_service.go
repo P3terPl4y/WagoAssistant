@@ -699,10 +699,7 @@ func (s *BotService) StartAdminBot() {
 // Dentro de una función que tenga acceso al cliente *whatsmeow.Client
 func (s *BotService) getContactName(client *whatsmeow.Client, jid types.JID) string {
 	contact, err := client.Store.Contacts.GetContact(context.Background(), jid)
-	fmt.Println(contact.FirstName)
-	fmt.Println(contact.FullName)
 	fmt.Println(contact.PushName)
-	fmt.Println(contact.FirstName)
 	if err != nil {
 		return "" // o devolver el número si no se encuentra
 	}
