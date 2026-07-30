@@ -347,6 +347,7 @@ func (s *BotService) switchHandler(client *whatsmeow.Client, userKey string, bot
 			}
 		}()
 	default:
+		fmt.Println(recipient)
 		go s.respond(client, userKey, botID, recipient, txt)
 	}
 }
@@ -700,7 +701,6 @@ func (s *BotService) StartAdminBot() {
 func (s *BotService) getContactName(client *whatsmeow.Client, jid types.JID) string {
 	contact, err := client.Store.Contacts.GetContact(context.Background(), jid)
 	fmt.Println(contact.PushName)
-	fmt.Println(contact.RedactedPhone)
 	if err != nil {
 		return "" // o devolver el número si no se encuentra
 	}
