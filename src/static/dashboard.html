@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
     <link rel="stylesheet" href="/assets/css/styles.css?v=3" />
     <style>
-        /* ===== BASE ===== */
+        /* ===== BASE (todo el CSS existente se mantiene) ===== */
         *,
         *::before,
         *::after {
@@ -33,14 +33,12 @@
             flex-direction: column;
         }
 
-        /* ===== DASHBOARD WRAPPER ===== */
         .dashboard-container {
             display: flex;
             min-height: 100vh;
             position: relative;
         }
 
-        /* ===== SIDEBAR (desplegable) ===== */
         .sidebar {
             position: fixed;
             top: 0;
@@ -59,7 +57,6 @@
             box-shadow: 0 0 2rem rgba(0, 0, 0, 0.15);
         }
 
-        /* Estado colapsado */
         .sidebar.collapsed {
             transform: translateX(calc(-1 * var(--sidebar-width) - 0.5rem));
             box-shadow: none;
@@ -114,7 +111,6 @@
             flex: 1;
         }
 
-        /* ===== OVERLAY (fondo oscuro al abrir sidebar en móvil) ===== */
         .sidebar-overlay {
             position: fixed;
             inset: 0;
@@ -132,7 +128,6 @@
             pointer-events: all;
         }
 
-        /* ===== MAIN CONTENT ===== */
         .main-content {
             flex: 1;
             padding: 1.5rem 2rem;
@@ -147,7 +142,6 @@
             margin-left: 0;
         }
 
-        /* ===== HEADER ===== */
         .header {
             display: flex;
             justify-content: space-between;
@@ -184,7 +178,6 @@
             color: var(--color-text-main);
         }
 
-        /* Botón hamburguesa */
         .hamburger-btn {
             background: transparent;
             border: none;
@@ -257,7 +250,6 @@
             background: rgba(16, 185, 129, 0.1);
         }
 
-        /* ===== GRID ===== */
         .grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -269,7 +261,6 @@
             grid-column: 1 / -1;
         }
 
-        /* ===== TARJETAS ===== */
         .glass-card {
             background: var(--color-bg-card);
             border-radius: var(--radius-md);
@@ -358,7 +349,6 @@
             transform: none !important;
         }
 
-        /* ===== BADGES ===== */
         .status-badge {
             display: inline-block;
             padding: 0.2rem 0.8rem;
@@ -382,7 +372,6 @@
             color: #eab308;
         }
 
-        /* ===== STATUS INFO ===== */
         .status-info {
             display: flex;
             flex-wrap: wrap;
@@ -408,7 +397,6 @@
             min-width: 120px;
         }
 
-        /* ===== QR ===== */
         .qr-container {
             text-align: center;
             padding: 1.25rem;
@@ -465,7 +453,6 @@
             font-size: 2rem;
         }
 
-        /* ===== TOAST ===== */
         .toast-container {
             position: fixed;
             bottom: 1.5rem;
@@ -521,7 +508,6 @@
             }
         }
 
-        /* ===== SCROLLBAR ===== */
         .sidebar::-webkit-scrollbar {
             width: 4px;
         }
@@ -535,24 +521,9 @@
             border-radius: 4px;
         }
 
-        /* ===== SIN MEDIA QUERIES — todo con medidas relativas ===== */
-
-        /* Ajuste para el logo en header cuando sidebar está colapsado */
         .sidebar.collapsed~.main-content .header-logo-small {
             display: flex;
         }
-
-        /* Pero también queremos que el logo del sidebar se oculte cuando colapsado */
-
-
-        /* Para pantallas donde el sidebar está colapsado por defecto (usando JS) */
-        /* no usamos media queries, usamos clases */
-
-        /* Ajuste fino: cuando el sidebar está colapsado, el logo en sidebar no se ve */
-        /* pero el logo en header sí */
-
-        /* ===== RESPONSIVE CON MEDIDAS RELATIVAS ===== */
-        /* Usamos clamp(), min(), max() y unidades relativas */
 
         .main-content {
             padding: clamp(0.75rem, 3vw, 2rem);
@@ -579,7 +550,6 @@
             min-width: clamp(80px, 15vw, 120px);
         }
 
-        /* ===== LOADING SPINNER EN BOTONES ===== */
         .btn .spinner {
             display: none;
             width: 1rem;
@@ -604,7 +574,6 @@
             }
         }
 
-        /* ===== PASSWORD STRENGTH (opcional) ===== */
         .password-strength {
             height: 4px;
             border-radius: 4px;
@@ -621,7 +590,6 @@
             transition: width 0.3s, background 0.3s;
         }
 
-        /* ===== COPIA DE SEGURIDAD ===== */
         .copy-feedback {
             font-size: 0.8rem;
             color: var(--color-text-muted);
@@ -634,7 +602,6 @@
             opacity: 1;
         }
 
-        /* ===== BOTÓN DE CIERRE DEL SIDEBAR (dentro) ===== */
         .sidebar-close-btn {
             display: none;
             align-self: flex-end;
@@ -654,17 +621,6 @@
             color: #ef4444;
         }
 
-        /* Mostrar el botón de cierre solo cuando el sidebar está colapsado (visible) */
-        /* pero queremos que siempre esté visible en móvil */
-        /* lo mostramos siempre, pero en desktop lo ocultamos con una clase */
-        /* como no usamos media queries, usamos JS para manejar la visibilidad */
-        /* por defecto lo mostramos, y lo ocultamos con JS cuando el sidebar está expandido en desktop */
-        /* mejor: lo mostramos siempre, y lo ocultamos con una clase desde JS */
-        .sidebar-close-btn.hidden-desktop {
-            display: none;
-        }
-
-        /* En móvil (detectado por JS) lo mostramos */
         .sidebar-close-btn {
             display: flex;
         }
@@ -675,7 +631,6 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-
         }
 
         table {
@@ -701,7 +656,6 @@
             background-color: rgba(192, 160, 128, 0.1);
         }
 
-        /* ===== CHAT CONTAINER ===== */
         .chat-container {
             display: flex;
             flex-direction: column;
@@ -758,13 +712,70 @@
             font-style: italic;
         }
 
-        /* Estado colapsado */
         #pedidosContainer.collapsed {
             display: none;
         }
 
-        /* Ajuste para que el logo del sidebar sea más pequeño en colapsado */
-        /* no aplicamos nada extra */
+        /* ===== NUEVO: Estilos para Pairing Code ===== */
+        .pairing-container {
+            margin-top: 1rem;
+            padding: 1rem;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            background: var(--color-bg-input);
+        }
+
+        .pairing-code-display {
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: 0.2rem;
+            color: var(--color-primary);
+            text-align: center;
+            padding: 1rem;
+            background: var(--color-bg-card);
+            border-radius: var(--radius-md);
+            border: 2px dashed var(--color-primary);
+            margin: 0.5rem 0;
+            font-family: monospace;
+        }
+
+        .pairing-timer {
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--color-text-muted);
+        }
+
+        .pairing-timer .timer-value {
+            font-weight: 700;
+            color: var(--color-primary);
+        }
+
+        .pairing-actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-top: 0.75rem;
+        }
+
+        .pairing-actions .btn {
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .method-selector {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .method-selector label {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            cursor: pointer;
+            font-weight: 500;
+        }
     </style>
 </head>
 
@@ -779,7 +790,7 @@
     <!-- ===== DASHBOARD ===== -->
     <div class="dashboard-container">
 
-        <!-- ===== SIDEBAR ===== -->
+        <!-- ===== SIDEBAR (igual) ===== -->
         <aside class="sidebar" id="sidebar">
             <button class="sidebar-close-btn" id="sidebarCloseBtn" aria-label="Cerrar menú">
                 <i class="fas fa-times"></i>
@@ -801,7 +812,7 @@
         <!-- ===== MAIN CONTENT ===== -->
         <main class="main-content" id="mainContent">
 
-            <!-- ===== HEADER ===== -->
+            <!-- ===== HEADER (igual) ===== -->
             <header class="header">
                 <div class="header-left">
                     <button class="hamburger-btn" id="hamburgerBtn" aria-label="Abrir menú">
@@ -831,7 +842,7 @@
             <!-- ===== GRID ===== -->
             <div class="grid">
 
-                <!-- ===== STATUS CARD ===== -->
+                <!-- ===== STATUS CARD (MODIFICADO) ===== -->
                 <div class="glass-card premium-card-body status-card">
                     <h3><i class="fas fa-robot"></i> Estado del Bot</h3>
                     <div class="status-info">
@@ -847,11 +858,42 @@
                         </div>
                     </div>
 
+                    <!-- ===== NUEVO: Selector de método ===== -->
+                    <div class="method-selector">
+                        <label>
+                            <input type="radio" name="pairMethod" value="qr" checked>
+                            <i class="fas fa-qrcode"></i> QR
+                        </label>
+                        <label>
+                            <input type="radio" name="pairMethod" value="code">
+                            <i class="fas fa-keyboard"></i> Código
+                        </label>
+                    </div>
+
+                    <!-- ===== NUEVO: Campo de teléfono para Pairing Code ===== -->
+                    <div id="pairingPhoneGroup" style="display:none; margin-bottom:0.75rem;">
+                        <div class="form-group" style="margin-bottom:0.3rem;">
+                            <input id="pairingPhoneInput" class="form-control" type="tel"
+                                placeholder="Número de teléfono (ej: 5352719044)" />
+                            <small style="color:var(--color-text-muted); font-size:0.8rem;">Solo dígitos, sin prefijo
+                                +</small>
+                        </div>
+                    </div>
+
+                    <!-- ===== Botones de acción ===== -->
                     <div class="bot-actions">
                         <div id="botControls" style="flex:1;">
                             <button id="startBotBtn" class="btn btn-primary" style="width:100%;">
                                 <i class="fas fa-qrcode"></i>
                                 <span class="btn-text">Conectar WhatsApp</span>
+                                <span class="spinner"></span>
+                            </button>
+                        </div>
+                        <!-- ===== NUEVO: Botón para Pairing Code ===== -->
+                        <div id="pairingControls" style="flex:1; display:none;">
+                            <button id="pairingBtn" class="btn btn-secondary" style="width:100%;">
+                                <i class="fas fa-key"></i>
+                                <span class="btn-text">Vincular con código</span>
                                 <span class="spinner"></span>
                             </button>
                         </div>
@@ -864,15 +906,14 @@
                         </div>
                     </div>
 
+                    <!-- ===== QR (existente) ===== -->
                     <div id="loader"><i class="fas fa-spinner fa-spin fa-2x"></i><br><small>Generando QR...</small>
                     </div>
-
                     <div id="qrBox" class="qr-container">
                         <img id="qrImage" src="" alt="WhatsApp QR Code" title="Haz clic para abrir el QR" />
                         <p style="color:#333; margin-top:0.5rem; font-size:0.9rem;">
                             Escanea en WhatsApp > Dispositivos Vinculados
                         </p>
-                        <!-- Enlace clickeable con el QR codificado -->
                         <a id="qrLink" class="qr-link" href="#" target="_blank" rel="noopener noreferrer">
                             <i class="fas fa-external-link-alt"></i> Abrir código QR
                         </a>
@@ -882,9 +923,38 @@
                         </button>
                         <span class="copy-feedback" id="copyFeedback">✓ Copiado</span>
                     </div>
+
+                    <!-- ===== NUEVO: Contenedor para Pairing Code ===== -->
+                    <div id="pairingContainer" class="pairing-container" style="display:none;">
+                        <div id="pairingStatus" style="text-align:center; color:var(--color-text-muted);">
+                            <i class="fas fa-spinner fa-spin"></i> Solicitando código...
+                        </div>
+                        <div id="pairingCodeDisplay" class="pairing-code-display" style="display:none;">---- ----</div>
+                        <div id="pairingTimer" class="pairing-timer" style="display:none;">
+                            <i class="fas fa-hourglass-half"></i> El código expira en: <span class="timer-value"
+                                id="pairingTimerValue">60</span> segundos
+                        </div>
+                        <div id="pairingSuccess" style="display:none; text-align:center; color:var(--color-primary);">
+                            <i class="fas fa-check-circle fa-2x"></i>
+                            <p>¡Vinculación exitosa! El bot está conectado.</p>
+                        </div>
+                        <div id="pairingError" style="display:none; text-align:center; color:#ef4444;">
+                            <i class="fas fa-exclamation-circle fa-2x"></i>
+                            <p id="pairingErrorMsg">Error al vincular.</p>
+                        </div>
+                        <div class="pairing-actions">
+                            <button id="pairingCancelBtn" class="btn btn-secondary"
+                                style="border-color:#ef4444; color:#ef4444; display:none;">
+                                <i class="fas fa-times"></i> Cancelar
+                            </button>
+                            <button id="pairingRetryBtn" class="btn btn-primary" style="display:none;">
+                                <i class="fas fa-redo"></i> Reintentar
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- ===== PROMPT CARD ===== -->
+                <!-- ===== RESTO DE TARJETAS (sin cambios) ===== -->
                 <div class="glass-card premium-card-body">
                     <h3><i class="fas fa-brain"></i> Configuración de IA</h3>
                     <p style="color:var(--color-text-muted); font-size:0.9rem;">Instrucciones para el asistente.</p>
@@ -900,7 +970,6 @@
                     </form>
                 </div>
 
-                <!-- ===== PHONE CARD ===== -->
                 <div class="glass-card premium-card-body">
                     <h3><i class="fas fa-phone"></i> Configuración de teléfono</h3>
                     <form id="phoneForm">
@@ -914,7 +983,6 @@
                     </form>
                 </div>
 
-                <!-- ===== PASSWORD CARD ===== -->
                 <div class="glass-card premium-card-body">
                     <h3><i class="fas fa-lock"></i> Configuración de contraseña</h3>
                     <form id="passwordForm">
@@ -931,6 +999,7 @@
                         </button>
                     </form>
                 </div>
+
                 <div class="glass-card premium-card-body">
                     <h3><i class="fas fa-lock"></i> Configuración de correo</h3>
                     <form id="emailForm">
@@ -947,7 +1016,7 @@
                     </form>
                 </div>
 
-                <!-- ===== PEDIDOS / REGISTRO CHAT ===== -->
+                <!-- ===== PEDIDOS (sin cambios) ===== -->
                 <div class="glass-card premium-card-body" style="margin-top:1.5rem;">
                     <h3 style="display:flex; align-items:center; gap:0.75rem; cursor:pointer;" id="pedidosToggle">
                         <i class="fas fa-comments"></i> Historial de Pedidos
@@ -955,8 +1024,6 @@
                             <i class="fas fa-chevron-down" id="pedidosIcon"></i>
                         </span>
                     </h3>
-
-                    <!-- Controles de paginación -->
                     <div id="pedidosControls"
                         style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.5rem; align-items:center;">
                         <label style="font-size:0.9rem; color:var(--color-text-muted);">Mostrar:</label>
@@ -967,23 +1034,19 @@
                             <option value="50">50</option>
                             <option value="100">100</option>
                         </select>
-
                         <label
                             style="font-size:0.9rem; color:var(--color-text-muted); margin-left:0.5rem;">Página:</label>
                         <input type="number" id="pedidosPage" value="1" min="1"
                             style="width:60px; padding:0.3rem 0.4rem; border-radius:0.4rem; border:1px solid var(--color-border); background:var(--color-bg-input); color:var(--color-text-main);" />
-
                         <button id="goToPageBtn" class="btn btn-secondary"
                             style="width:auto; padding:0.3rem 1rem; font-size:0.85rem; border-width:1px;">
                             <i class="fas fa-arrow-right"></i> Ir a página
                         </button>
-
                         <button id="firstPageBtn" class="btn btn-secondary"
                             style="width:auto; padding:0.3rem 1rem; font-size:0.85rem; border-width:1px;">
                             <i class="fas fa-fast-backward"></i> Últimos pedidos
                         </button>
                     </div>
-
                     <div id="pedidosContainer" style="display:block; transition: all 0.3s ease;">
                         <div id="pedidosList" class="chat-container"
                             style="max-height:400px; overflow-y:auto; padding-right:0.5rem;">
@@ -997,16 +1060,15 @@
                         </div>
                     </div>
                 </div>
+
+            </div><!-- /grid -->
         </main>
     </div><!-- /dashboard-container -->
+
     <script src="/assets/js/main.js?v=2"></script>
     <script>
         // ============================================================
-        //  TOAST SYSTEM (mejorado)
-        // ============================================================
-
-        // ============================================================
-        //  CSRF
+        //  TOAST, CSRF, SIDEBAR, THEME, LOGOUT (igual que antes)
         // ============================================================
         function getCsrfToken() {
             const match = document.cookie.match(new RegExp('(^| )csrf_token=([^;]+)'));
@@ -1014,7 +1076,7 @@
         }
 
         // ============================================================
-        //  SIDEBAR TOGGLE (CORREGIDO - SIN MEDIA QUERIES)
+        //  SIDEBAR TOGGLE (igual)
         // ============================================================
         const sidebar = document.getElementById('sidebar');
         const overlay = document.getElementById('sidebarOverlay');
@@ -1023,13 +1085,11 @@
         const mainContent = document.getElementById('mainContent');
         const headerLogoSmall = document.getElementById('headerLogoSmall');
 
-        let sidebarOpen = true;      // estado actual (abierto/cerrado)
-        let isMobile = false;        // modo móvil
-        let userToggled = false;     // indica si el usuario ha cambiado manualmente
+        let sidebarOpen = true;
+        let isMobile = false;
+        let userToggled = false;
 
-        function detectMobile() {
-            return window.innerWidth < 700;
-        }
+        function detectMobile() { return window.innerWidth < 700; }
 
         function applySidebarState(open) {
             if (open) {
@@ -1057,35 +1117,21 @@
             sidebarOpen = open;
         }
 
-        function toggleSidebar() {
-            userToggled = true;
-            applySidebarState(!sidebarOpen);
-        }
+        function toggleSidebar() { userToggled = true; applySidebarState(!sidebarOpen); }
 
-        function closeSidebar() {
-            if (sidebarOpen) {
-                userToggled = true;
-                applySidebarState(false);
-            }
-        }
+        function closeSidebar() { if (sidebarOpen) { userToggled = true; applySidebarState(false); } }
 
-        function openSidebar() {
-            if (!sidebarOpen) {
-                userToggled = true;
-                applySidebarState(true);
-            }
-        }
+        function openSidebar() { if (!sidebarOpen) { userToggled = true; applySidebarState(true); } }
 
-        // Inicializar según el tamaño actual
         function initSidebar() {
             isMobile = detectMobile();
-            const initialOpen = !isMobile; // en desktop abierto, en móvil cerrado
+            const initialOpen = !isMobile;
             applySidebarState(initialOpen);
             userToggled = false;
         }
 
-        // Manejar cambios de tamaño (sin media queries)
         let resizeTimeout;
+
         function handleResize() {
             clearTimeout(resizeTimeout);
             resizeTimeout = setTimeout(() => {
@@ -1093,10 +1139,8 @@
                 if (newMobile !== isMobile) {
                     isMobile = newMobile;
                     if (!userToggled) {
-                        const newOpen = !isMobile;
-                        applySidebarState(newOpen);
+                        applySidebarState(!isMobile);
                     } else {
-                        // Ajustar overlay y botón de cierre manteniendo el estado actual
                         if (sidebarOpen) {
                             if (isMobile) {
                                 overlay.classList.add('active');
@@ -1108,10 +1152,9 @@
                         } else {
                             headerLogoSmall.style.display = 'flex';
                             overlay.classList.remove('active');
-                            if (isMobile) {
-                                sidebarCloseBtn.style.display = 'flex';
-                            } else {
-                                sidebarCloseBtn.style.display = 'none';
+                            if (isMobile) { sidebarCloseBtn.style.display = 'flex'; } else {
+                                sidebarCloseBtn.style.display =
+                                    'none';
                             }
                         }
                     }
@@ -1119,33 +1162,18 @@
             }, 200);
         }
 
-        // Eventos
         hamburgerBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             toggleSidebar();
         });
-
-        sidebarCloseBtn.addEventListener('click', () => {
-            closeSidebar();
-        });
-
-        overlay.addEventListener('click', () => {
-            closeSidebar();
-        });
-
-        // Cerrar con Escape (solo en móvil)
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && isMobile && sidebarOpen) {
-                closeSidebar();
-            }
-        });
-
-        // Inicializar y escuchar resize
+        sidebarCloseBtn.addEventListener('click', closeSidebar);
+        overlay.addEventListener('click', closeSidebar);
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && isMobile && sidebarOpen) closeSidebar(); });
         window.addEventListener('load', initSidebar);
         window.addEventListener('resize', handleResize);
 
         // ============================================================
-        //  THEME TOGGLE
+        //  THEME TOGGLE (igual)
         // ============================================================
         const themeToggleBtn = document.getElementById('themeToggle');
         if (themeToggleBtn) {
@@ -1168,19 +1196,17 @@
         }
 
         // ============================================================
-        //  LOGOUT
+        //  LOGOUT (igual)
         // ============================================================
         document.getElementById('logoutBtn').addEventListener('click', async () => {
             try {
                 await fetch('/logout', { method: 'POST', headers: { 'X-CSRF-Token': getCsrfToken() } });
                 window.location.href = '/sing';
-            } catch (e) {
-                window.location.href = '/sing';
-            }
+            } catch (e) { window.location.href = '/sing'; }
         });
 
         // ============================================================
-        //  INICIALIZAR UI
+        //  INICIALIZAR UI (igual)
         // ============================================================
         document.addEventListener('DOMContentLoaded', () => {
             if (typeof window.userDisplay !== 'undefined') {
@@ -1190,65 +1216,47 @@
                 document.getElementById('profileRole').textContent = window.userRole;
                 document.getElementById('payStatus').textContent = (window.tier === 'pro' || window.tier === 'enterprise') ?
                     window.tier.toUpperCase() : 'FREE';
-
                 let limitText = window.msgLimit === -1 ? '∞' : window.msgLimit;
                 document.getElementById('usageStats').textContent = `${window.usage} / ${limitText} mensajes`;
-
                 if (window.tier !== 'free') {
                     document.getElementById('upgradeBtnContainer').style.display = 'none';
                 }
-
                 if (window.userRole === 'admin') {
                     document.getElementById('adminLink').style.display = 'flex';
+                }
+                // Cargar número de teléfono en el campo de Pairing Code
+                if (window.userPhone) {
+                    document.getElementById('pairingPhoneInput').value = window.userPhone.replace('+', '');
                 }
             }
             checkBotStatus();
 
-            // Cargar prompt actual si existe
             if (window.botID) {
-                fetch(`/bot/${window.botID}/prompt`, {
-                    headers: { 'X-CSRF-Token': getCsrfToken() }
-                })
+                fetch(`/bot/${window.botID}/prompt`, { headers: { 'X-CSRF-Token': getCsrfToken() } })
                     .then(res => res.json())
-                    .then(data => {
-                        if (data.prompt) {
-                            document.getElementById('promptText').value = data.prompt;
-                        }
-                    })
+                    .then(data => { if (data.prompt) document.getElementById('promptText').value = data.prompt; })
                     .catch(() => { });
             }
-
-            // Cargar teléfono actual
             if (window.userID) {
-                fetch(`/user/phone`, {
-                    headers: { 'X-CSRF-Token': getCsrfToken() }
-                })
+                fetch(`/user/phone`, { headers: { 'X-CSRF-Token': getCsrfToken() } })
                     .then(res => res.json())
-                    .then(data => {
-                        if (data.phone) {
-                            document.getElementById('phoneText').value = data.phone;
-                        }
-                    })
+                    .then(data => { if (data.phone) document.getElementById('phoneText').value = data.phone; })
                     .catch(() => { });
             }
         });
 
         // ============================================================
-        //  BOT STATUS
+        //  BOT STATUS (igual)
         // ============================================================
         let pollingInterval = null;
 
         async function checkBotStatus() {
             if (!window.botID) return;
             try {
-                const res = await fetch(`/bot/${window.botID}/status`, {
-                    headers: { 'X-CSRF-Token': getCsrfToken() }
-                });
+                const res = await fetch(`/bot/${window.botID}/status`, { headers: { 'X-CSRF-Token': getCsrfToken() } });
                 const data = await res.json();
                 updateStatusBadge(data.status === 'active');
-            } catch (e) {
-                console.error(e);
-            }
+            } catch (e) { console.error(e); }
         }
 
         function updateStatusBadge(isActive) {
@@ -1262,6 +1270,7 @@
                 btn.innerHTML = `<i class="fas fa-check-circle"></i> <span class="btn-text">Conectado</span>`;
                 btn.disabled = true;
                 qrBox.style.display = 'none';
+                document.getElementById('pairingContainer').style.display = 'none';
                 if (pollingInterval) {
                     clearInterval(pollingInterval);
                     pollingInterval = null;
@@ -1272,11 +1281,37 @@
                 btn.style.display = 'block';
                 btn.innerHTML = `<i class="fas fa-qrcode"></i> <span class="btn-text">Conectar WhatsApp</span><span class="spinner"></span>`;
                 btn.disabled = false;
+                // Si está desconectado, ocultar el contenedor de pairing
+                document.getElementById('pairingContainer').style.display = 'none';
             }
         }
 
         // ============================================================
-        //  CONNECT BOT (con manejo de QR y enlace)
+        //  MÉTODO DE VINCULACIÓN (QR vs CÓDIGO)
+        // ============================================================
+        const methodRadios = document.querySelectorAll('input[name="pairMethod"]');
+        const pairingPhoneGroup = document.getElementById('pairingPhoneGroup');
+        const pairingControls = document.getElementById('pairingControls');
+        const startBotBtn = document.getElementById('startBotBtn');
+
+        methodRadios.forEach(radio => {
+            radio.addEventListener('change', function () {
+                if (this.value === 'qr') {
+                    pairingPhoneGroup.style.display = 'none';
+                    pairingControls.style.display = 'none';
+                    startBotBtn.style.display = 'block';
+                    document.getElementById('pairingContainer').style.display = 'none';
+                } else {
+                    pairingPhoneGroup.style.display = 'block';
+                    pairingControls.style.display = 'block';
+                    startBotBtn.style.display = 'none';
+                    document.getElementById('pairingContainer').style.display = 'none';
+                }
+            });
+        });
+
+        // ============================================================
+        //  CONNECT BOT (QR) - igual que antes
         // ============================================================
         document.getElementById('startBotBtn').addEventListener('click', async function () {
             const btn = this;
@@ -1287,7 +1322,6 @@
             const copyBtn = document.getElementById('copyQrBtn');
             const copyFeedback = document.getElementById('copyFeedback');
 
-            // Deshabilitar botón mientras se procesa
             btn.disabled = true;
             btn.classList.add('loading');
             loader.style.display = 'block';
@@ -1306,22 +1340,18 @@
 
                 if (data.status === 'qr') {
                     const base64Qr = data.qr;
-                    // Mostrar QR
                     qrImg.src = 'data:image/png;base64,' + base64Qr;
-                    // Construir enlace clickeable (data URI)
                     const dataUri = 'data:image/png;base64,' + base64Qr;
                     qrLink.href = dataUri;
                     qrLink.setAttribute('download', 'wago-qr.png');
                     qrLink.innerHTML = `<i class="fas fa-external-link-alt"></i> Abrir / Descargar QR`;
                     qrBox.style.display = 'block';
 
-                    // Botón copiar datos QR
                     copyBtn.onclick = function () {
                         navigator.clipboard.writeText(base64Qr).then(() => {
                             copyFeedback.classList.add('show');
                             setTimeout(() => copyFeedback.classList.remove('show'), 2000);
                         }).catch(() => {
-                            // Fallback
                             const textarea = document.createElement('textarea');
                             textarea.value = base64Qr;
                             document.body.appendChild(textarea);
@@ -1333,18 +1363,12 @@
                         });
                     };
 
-                    // Hacer click en la imagen para abrir en nueva pestaña
-                    qrImg.onclick = function () {
-                        window.open(dataUri, '_blank');
-                    };
+                    qrImg.onclick = function () { window.open(dataUri, '_blank'); };
 
-                    // Iniciar polling
                     if (!pollingInterval) {
                         pollingInterval = setInterval(async () => {
                             try {
-                                const st = await fetch(`/bot/${window.botID}/status`, {
-                                    headers: { 'X-CSRF-Token': getCsrfToken() }
-                                });
+                                const st = await fetch(`/bot/${window.botID}/status`, { headers: { 'X-CSRF-Token': getCsrfToken() } });
                                 const std = await st.json();
                                 if (std.status === 'active') {
                                     updateStatusBadge(true);
@@ -1379,7 +1403,174 @@
         });
 
         // ============================================================
-        //  PROMPT UPDATE (con feedback)
+        //  PAIRING CODE (NUEVO)
+        // ============================================================
+        const pairingBtn = document.getElementById('pairingBtn');
+        const pairingContainer = document.getElementById('pairingContainer');
+        const pairingStatus = document.getElementById('pairingStatus');
+        const pairingCodeDisplay = document.getElementById('pairingCodeDisplay');
+        const pairingTimer = document.getElementById('pairingTimer');
+        const pairingTimerValue = document.getElementById('pairingTimerValue');
+        const pairingSuccess = document.getElementById('pairingSuccess');
+        const pairingError = document.getElementById('pairingError');
+        const pairingErrorMsg = document.getElementById('pairingErrorMsg');
+        const pairingCancelBtn = document.getElementById('pairingCancelBtn');
+        const pairingRetryBtn = document.getElementById('pairingRetryBtn');
+        const pairingPhoneInput = document.getElementById('pairingPhoneInput');
+
+        let pairingTimerInterval = null;
+
+        function resetPairingUI() {
+            pairingContainer.style.display = 'none';
+            pairingStatus.style.display = 'block';
+            pairingCodeDisplay.style.display = 'none';
+            pairingTimer.style.display = 'none';
+            pairingSuccess.style.display = 'none';
+            pairingError.style.display = 'none';
+            pairingCancelBtn.style.display = 'none';
+            pairingRetryBtn.style.display = 'none';
+            if (pairingTimerInterval) {
+                clearInterval(pairingTimerInterval);
+                pairingTimerInterval = null;
+            }
+            pairingBtn.disabled = false;
+            pairingBtn.classList.remove('loading');
+            pairingBtn.querySelector('.btn-text').textContent = 'Vincular con código';
+        }
+
+        pairingBtn.addEventListener('click', async function () {
+            const phone = pairingPhoneInput.value.trim();
+            if (!phone || !/^[0-9]{7,15}$/.test(phone)) {
+                Toast.show("Ingresa un número de teléfono válido (solo dígitos).", "warning");
+                return;
+            }
+
+            // Resetear UI
+            resetPairingUI();
+            pairingContainer.style.display = 'block';
+            pairingStatus.textContent = 'Solicitando código de vinculación...';
+            pairingStatus.style.display = 'block';
+            pairingCodeDisplay.style.display = 'none';
+            pairingTimer.style.display = 'none';
+            pairingSuccess.style.display = 'none';
+            pairingError.style.display = 'none';
+            pairingCancelBtn.style.display = 'none';
+            pairingRetryBtn.style.display = 'none';
+
+            this.disabled = true;
+            this.classList.add('loading');
+
+            try {
+                const res = await fetch('/bot/pair-code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': getCsrfToken()
+                    },
+                    body: JSON.stringify({ phone: phone })
+                });
+                const data = await res.json();
+
+                if (res.ok && data.status === 'pairing_code') {
+                    // Mostrar código
+                    pairingStatus.style.display = 'none';
+                    pairingCodeDisplay.textContent = data.code || '---- ----';
+                    pairingCodeDisplay.style.display = 'block';
+                    pairingTimer.style.display = 'block';
+                    pairingTimerValue.textContent = data.expires_in || 60;
+                    pairingCancelBtn.style.display = 'inline-block';
+                    pairingRetryBtn.style.display = 'none';
+
+                    // Iniciar temporizador
+                    let seconds = data.expires_in || 60;
+                    pairingTimerInterval = setInterval(() => {
+                        seconds--;
+                        pairingTimerValue.textContent = seconds;
+                        if (seconds <= 0) {
+                            clearInterval(pairingTimerInterval);
+                            pairingTimerInterval = null;
+                            pairingStatus.style.display = 'block';
+                            pairingStatus.textContent = '⏰ El código ha expirado. Solicita uno nuevo.';
+                            pairingCodeDisplay.style.display = 'none';
+                            pairingTimer.style.display = 'none';
+                            pairingCancelBtn.style.display = 'none';
+                            pairingRetryBtn.style.display = 'inline-block';
+                        }
+                    }, 1000);
+
+                    // Iniciar polling para verificar vinculación
+                    let pollAttempts = 0;
+                    const pollInterval = setInterval(async () => {
+                        try {
+                            pollAttempts++;
+                            const st = await fetch(`/bot/${window.botID}/status`, { headers: { 'X-CSRF-Token': getCsrfToken() } });
+                            const std = await st.json();
+                            if (std.status === 'active') {
+                                clearInterval(pollInterval);
+                                clearInterval(pairingTimerInterval);
+                                pairingTimerInterval = null;
+                                updateStatusBadge(true);
+                                Toast.show("¡WhatsApp Vinculado Exitosamente!", "success");
+                                pairingSuccess.style.display = 'block';
+                                pairingCodeDisplay.style.display = 'none';
+                                pairingTimer.style.display = 'none';
+                                pairingStatus.style.display = 'none';
+                                pairingCancelBtn.style.display = 'none';
+                                pairingRetryBtn.style.display = 'none';
+                            } else if (pollAttempts > 20) {
+                                // Después de ~60 segundos, no se vinculó
+                                clearInterval(pollInterval);
+                                if (!pairingSuccess.style.display || pairingSuccess.style.display === 'none') {
+                                    pairingStatus.style.display = 'block';
+                                    pairingStatus.textContent = '⏰ No se completó la vinculación a tiempo.';
+                                    pairingCodeDisplay.style.display = 'none';
+                                    pairingTimer.style.display = 'none';
+                                    pairingCancelBtn.style.display = 'none';
+                                    pairingRetryBtn.style.display = 'inline-block';
+                                }
+                            }
+                        } catch (err) { /* ignorar */ }
+                    }, 3000);
+
+                } else if (res.ok && data.status === 'success') {
+                    // Vinculación inmediata
+                    updateStatusBadge(true);
+                    Toast.show("¡WhatsApp Vinculado Exitosamente!", "success");
+                    resetPairingUI();
+                } else {
+                    throw new Error(data.error || data.message || 'Error al vincular');
+                }
+            } catch (err) {
+                pairingStatus.textContent = '❌ ' + err.message;
+                pairingErrorMsg.textContent = err.message;
+                pairingError.style.display = 'block';
+                pairingRetryBtn.style.display = 'inline-block';
+                pairingCancelBtn.style.display = 'none';
+                Toast.show('Error: ' + err.message, 'error');
+            } finally {
+                this.disabled = false;
+                this.classList.remove('loading');
+            }
+        });
+
+        // Cancelar vinculación
+        pairingCancelBtn.addEventListener('click', function () {
+            resetPairingUI();
+            if (pairingTimerInterval) {
+                clearInterval(pairingTimerInterval);
+                pairingTimerInterval = null;
+            }
+            Toast.show('Vinculación cancelada.', 'info');
+        });
+
+        // Reintentar
+        pairingRetryBtn.addEventListener('click', function () {
+            resetPairingUI();
+            pairingBtn.click();
+        });
+
+        // ============================================================
+        //  PROMOT UPDATE, PHONE, EMAIL, PASSWORD (igual)
         // ============================================================
         document.getElementById('promptForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -1410,9 +1601,6 @@
             btn.classList.remove('loading');
         });
 
-        // ============================================================
-        //  PHONE UPDATE
-        // ============================================================
         document.getElementById('phoneForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const text = document.getElementById('phoneText').value.trim();
@@ -1445,49 +1633,37 @@
             btn.disabled = false;
             btn.classList.remove('loading');
         });
+
         document.getElementById('emailForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-
             const input = document.getElementById('emailText');
             const text = input.value.trim();
             const btn = document.getElementById('emailSubmitBtn');
             const originalText = btn.textContent;
-
-            // Validar sesión activa
             if (!window.userID) {
                 Toast.show("No tienes un usuario activo. Inicia sesión nuevamente.", "error");
                 return;
             }
-
-            // Validar formato de email
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (!text || !emailRegex.test(text)) {
                 Toast.show("Por favor, ingresa un correo electrónico válido (ej: usuario@dominio.com)", "warning");
                 input.focus();
                 return;
             }
-
-            // Deshabilitar UI
             btn.disabled = true;
             btn.textContent = "Guardando...";
             btn.classList.add('loading');
             input.disabled = true;
-
             try {
                 const response = await fetch('/user/email', {
                     method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-Token': getCsrfToken()
-                    },
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
                     body: JSON.stringify({ email: text })
                 });
-
                 const data = await response.json().catch(() => null);
-
                 if (response.ok) {
                     Toast.show("Correo electrónico actualizado correctamente ✅", "success");
-                    input.value = ''; // limpiar campo tras éxito
+                    input.value = '';
                 } else {
                     const errorMsg = data?.error || "No se pudo actualizar el correo. Intenta de nuevo.";
                     Toast.show(errorMsg, "error");
@@ -1497,19 +1673,15 @@
                 console.error("Error de red:", err);
                 Toast.show("Error de conexión. Verifica tu internet e intenta de nuevo.", "error");
             } finally {
-                // Restaurar UI siempre
                 btn.disabled = false;
                 btn.textContent = originalText;
                 btn.classList.remove('loading');
                 input.disabled = false;
             }
         });
-        // ============================================================
-        //  PASSWORD UPDATE (con validación de fortaleza)
-        // ============================================================
+
         const passwordInput = document.getElementById('passwordText');
         const strengthBar = document.getElementById('passwordStrengthBar');
-
         passwordInput.addEventListener('input', function () {
             const val = this.value;
             let strength = 0;
@@ -1565,7 +1737,7 @@
         });
 
         // ============================================================
-        //  UPGRADE
+        //  UPGRADE (igual)
         // ============================================================
         const upgradeBtn = document.getElementById('upgradeBtn');
         if (upgradeBtn) {
@@ -1588,21 +1760,12 @@
             });
         }
 
-        console.log('✅ Dashboard Wago cargado correctamente');
-        console.log('📱 Modo móvil:', detectMobile());
-        console.log('📂 Sidebar abierto:', sidebarOpen);
         // ============================================================
-        //  PEDIDOS (CHAT) - Carga y Toggle
+        //  PEDIDOS (CHAT) - PAGINACIÓN (igual)
         // ============================================================
-        // ============================================================
-        //  PEDIDOS (CHAT) - Carga y Toggle con paginación
-        // ============================================================
-        // ============================================================
-        //  PEDIDOS (CHAT) - PAGINACIÓN AVANZADA
-        // ============================================================
-        let pedidosOffset = 0;    // offset actual (número de registros saltados)
-        let pedidosLimit = 20;    // límite actual
-        let currentPage = 1;      // página actual (1-indexado)
+        let pedidosOffset = 0;
+        let pedidosLimit = 20;
+        let currentPage = 1;
 
         async function loadPedidos(append = false, resetOffset = false) {
             if (!window.userID) return;
@@ -1610,8 +1773,6 @@
             const loadBtn = document.getElementById('loadMorePedidos');
             const limit = parseInt(document.getElementById('pedidosLimit').value, 10) || 20;
             const page = parseInt(document.getElementById('pedidosPage').value, 10) || 1;
-
-            // Si resetOffset es true, calcular offset desde la página
             let offset;
             if (resetOffset) {
                 offset = (page - 1) * limit;
@@ -1619,76 +1780,73 @@
             } else {
                 offset = pedidosOffset;
             }
-
             if (!append) {
                 list.innerHTML = '<div class="chat-empty">Cargando...</div>';
-                // Actualizar offset solo si no es append
-                // pero si es append, offset ya está en pedidosOffset
             }
-
-            const response = await fetch(`/pedidos?user_id=${window.userID}&limit=${limit}&offset=${offset}`, {
-                headers: { 'X-CSRF-Token': getCsrfToken() }
-            })
-            const data = await response.json()
-            if (!append) list.innerHTML = '';
-            data.forEach(p => {
-                const div = document.createElement('div');
-                div.className = 'chat-message';
-                const date = new Date(p.created_at);
-                const timeStr = date.toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
-                div.innerHTML = `
-                    <div class="msg-header">
-                        <span class="client-name"><i class="fas fa-user"></i> ${p.Client}</span>
-                    </div>
-                    <div class="msg-body">${p.Text}</div>
-                    <div class="msg-time">${timeStr}</div>
-                `;
-                list.appendChild(div);
-            });
-
-            // Actualizar offset solo si no es append (porque en append se mantiene)
-            if (!append) {
-                pedidosOffset = offset + data.pedidos.length;
-            } else {
-                pedidosOffset += data.pedidos.length;
-            }
-
-            // Mostrar/ocultar botón "Cargar más"
-            if (data.pedidos.length < limit) {
+            try {
+                const response = await fetch(`/pedidos?user_id=${window.userID}&limit=${limit}&offset=${offset}`, {
+                    headers: { 'X-CSRF-Token': getCsrfToken() }
+                });
+                const data = await response.json();
+                if (data.pedidos && data.pedidos.length > 0) {
+                    if (!append) list.innerHTML = '';
+                    data.pedidos.forEach(p => {
+                        const div = document.createElement('div');
+                        div.className = 'chat-message';
+                        const date = new Date(p.created_at);
+                        const timeStr = date.toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+                        div.innerHTML = `
+                            <div class="msg-header">
+                                <span class="client-name"><i class="fas fa-user"></i> ${p.client}</span>
+                            </div>
+                            <div class="msg-body">${p.pedido}</div>
+                            <div class="msg-time">${timeStr}</div>
+                        `;
+                        list.appendChild(div);
+                    });
+                    if (!append) {
+                        pedidosOffset = offset + data.pedidos.length;
+                    } else {
+                        pedidosOffset += data.pedidos.length;
+                    }
+                    if (data.pedidos.length < limit) {
+                        loadBtn.style.display = 'none';
+                    } else {
+                        loadBtn.style.display = 'inline-block';
+                    }
+                    if (append) {
+                        list.scrollTop = list.scrollHeight;
+                    }
+                } else {
+                    if (!append) {
+                        list.innerHTML = '<div class="chat-empty">No hay pedidos registrados aún.</div>';
+                    }
+                    loadBtn.style.display = 'none';
+                }
+            } catch (err) {
+                console.error(err);
+                if (!append) {
+                    list.innerHTML = '<div class="chat-empty">Error al cargar pedidos.</div>';
+                }
                 loadBtn.style.display = 'none';
-            } else {
-                loadBtn.style.display = 'inline-block';
-            }
-
-            if (append) {
-                list.scrollTop = list.scrollHeight;
             }
         }
 
-        // --- Eventos de paginación ---
-
-        // Cambiar límite
         document.getElementById('pedidosLimit').addEventListener('change', function () {
-            // Resetear a la primera página
             document.getElementById('pedidosPage').value = 1;
             currentPage = 1;
             pedidosOffset = 0;
             loadPedidos(false, true);
         });
 
-        // Botón "Ir a página"
         document.getElementById('goToPageBtn').addEventListener('click', function () {
             const page = parseInt(document.getElementById('pedidosPage').value, 10) || 1;
-            if (page < 1) {
-                document.getElementById('pedidosPage').value = 1;
-                return;
-            }
+            if (page < 1) { document.getElementById('pedidosPage').value = 1; return; }
             currentPage = page;
             pedidosOffset = (page - 1) * parseInt(document.getElementById('pedidosLimit').value, 10);
             loadPedidos(false, false);
         });
 
-        // Botón "Últimos pedidos" (primera página)
         document.getElementById('firstPageBtn').addEventListener('click', function () {
             document.getElementById('pedidosPage').value = 1;
             currentPage = 1;
@@ -1696,15 +1854,12 @@
             loadPedidos(false, true);
         });
 
-        // Botón "Cargar más" (siguiente página)
         document.getElementById('loadMorePedidos').addEventListener('click', function () {
-            // Incrementar la página mostrada
             currentPage = Math.floor(pedidosOffset / parseInt(document.getElementById('pedidosLimit').value, 10)) + 1;
             document.getElementById('pedidosPage').value = currentPage;
             loadPedidos(true, false);
         });
 
-        // Carga inicial al expandir (ya existe, pero ajustamos)
         document.addEventListener('DOMContentLoaded', function () {
             const toggle = document.getElementById('pedidosToggle');
             const container = document.getElementById('pedidosContainer');
@@ -1715,7 +1870,6 @@
                         container.style.display = 'block';
                         container.classList.remove('collapsed');
                         icon.classList.replace('fa-chevron-right', 'fa-chevron-down');
-                        // Si está vacío, cargar pedidos al abrir
                         if (document.getElementById('pedidosList').children.length <= 1) {
                             loadPedidos(false, true);
                         }
@@ -1725,36 +1879,13 @@
                         icon.classList.replace('fa-chevron-down', 'fa-chevron-right');
                     }
                 });
-                // Carga inicial (si no se cargó antes)
                 loadPedidos(false, true);
             }
         });
 
-        // Toggle colapsar/expandir
-        document.addEventListener('DOMContentLoaded', function () {
-            const toggle = document.getElementById('pedidosToggle');
-            const container = document.getElementById('pedidosContainer');
-            const icon = document.getElementById('pedidosIcon');
-            if (toggle && container) {
-                toggle.addEventListener('click', function () {
-                    if (container.style.display === 'none' || container.classList.contains('collapsed')) {
-                        container.style.display = 'block';
-                        container.classList.remove('collapsed');
-                        icon.classList.replace('fa-chevron-right', 'fa-chevron-down');
-                    } else {
-                        container.style.display = 'none';
-                        container.classList.add('collapsed');
-                        icon.classList.replace('fa-chevron-down', 'fa-chevron-right');
-                    }
-                });
-                // Cargar pedidos al abrir (primera vez)
-                loadPedidos(false);
-                // Cargar más
-                document.getElementById('loadMorePedidos').addEventListener('click', function () {
-                    loadPedidos(true);
-                });
-            }
-        });
+        console.log('✅ Dashboard Wago cargado correctamente');
+        console.log('📱 Modo móvil:', detectMobile());
+        console.log('📂 Sidebar abierto:', sidebarOpen);
     </script>
 </body>
 

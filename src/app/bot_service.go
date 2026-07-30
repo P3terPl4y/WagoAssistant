@@ -804,3 +804,85 @@ func (s *BotService) SetAdminClientByBotID(botID int) error {
 
 	return nil
 }
+
+// PairBot inicia el proceso de vinculación por código (alternativa al QR).
+// Requiere que el cliente ya esté conectado.
+func (s *BotService) PairBot(botID int, phoneNumber string, resultChan chan<- string) {
+	log := s.logger.WithBotID(botID)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	bot, err := s.bots.GetByID(ctx, botID)
+	if err != nil || bot == nil {
+		log.Error().Err(err).Msg("Bot not found")
+		resultChan <- "ERROR: bot not found"
+		return
+	}
+
+	if bot.Blocked || (bot.PaymentStatus != "free" && bot.PaymentStatus != "paid") {
+		log.Warn().Msg("Bot not eligible for pairing")
+		resultChan <- "ERROR: bot not eligible"
+		return
+	}
+
+	// Obtener contenedor y dispositivo
+	container := s.GetContainer(botID)
+	deviceStore, err := container.GetFirstDevice(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get device")
+		resultChan <- "ERROR: device error"
+		return
+	}
+
+	clientLog := waLog.Stdout("Client", "WARN", true)
+	client := whatsmeow.NewClient(deviceStore, clientLog)
+	s.botMgr.Register(botID, client, cancel)
+
+	// 1. Conectar primero (requisito para PairPhone)
+	if err := s.ConnectWithRetry(client); err != nil {
+		log.Error().Err(err).Msg("Connection failed")
+		resultChan <- "ERROR: connection failed"
+		return
+	}
+
+	// 2. Solicitar código de vinculación
+	// Parámetros: phone (solo dígitos), showPushNotification, clientType, clientDisplayName
+	// clientType puede ser: PairClientChrome, PairClientFirefox, PairClientEdge, PairClientOpera
+	// clientDisplayName debe tener formato "Browser (OS)"
+	code, err := client.PairPhone(ctx, phoneNumber, true, whatsmeow.PairClientChrome, "Chrome (Linux)")
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get pairing code")
+		resultChan <- "ERROR: pairing failed"
+		return
+	}
+
+	log.Info().Str("code", code).Msg("Pairing code generated")
+	resultChan <- code
+
+	// 3. Esperar a que se complete la vinculación (opcional: monitorear evento)
+	// El cliente se vincula automáticamente cuando el usuario introduce el código.
+	// Puedes usar un ticker para verificar si client.Store.ID != nil
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+	timeout := time.After(65 * time.Second) // El código expira a los 60s
+
+	for {
+		select {
+		case <-ctx.Done():
+			client.Disconnect()
+			return
+		case <-timeout:
+			log.Warn().Msg("Pairing code expired")
+			resultChan <- "TIMEOUT"
+			client.Disconnect()
+			return
+		case <-ticker.C:
+			if client.Store.ID != nil {
+				log.Info().Str("jid", client.Store.ID.String()).Msg("Pairing successful")
+				s.runLifecycle(botID, client, ctx, cancel)
+				resultChan <- "SUCCESS"
+				return
+			}
+		}
+	}
+}

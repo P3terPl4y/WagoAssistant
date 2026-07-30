@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -19,6 +20,7 @@ import (
 // BotHandler handles bot-related HTTP endpoints.
 type BotHandler struct {
 	botSvc      *app.BotService
+	userSvc     *app.UserService
 	botRepo     ports.BotRepository
 	promptRepo  ports.PromptRepository
 	promptCache *concurrency.PromptCache
@@ -28,82 +30,82 @@ type BotHandler struct {
 	gNotifier   *notifications.GmailNotifier
 }
 
-func NewBotHandler(botSvc *app.BotService, botRepo ports.BotRepository, promptRepo ports.PromptRepository, promptCache *concurrency.PromptCache, botMgr *concurrency.BotManager, log logger.Logger, maxBots int, gNotifier *notifications.GmailNotifier) *BotHandler {
-	return &BotHandler{botSvc: botSvc, botRepo: botRepo, promptRepo: promptRepo, promptCache: promptCache, botMgr: botMgr, logger: log.WithComponent("bot_handler"), maxBots: maxBots, gNotifier: gNotifier}
+func NewBotHandler(botSvc *app.BotService, userSvc *app.UserService, botRepo ports.BotRepository, promptRepo ports.PromptRepository, promptCache *concurrency.PromptCache, botMgr *concurrency.BotManager, log logger.Logger, maxBots int, gNotifier *notifications.GmailNotifier) *BotHandler {
+	return &BotHandler{botSvc: botSvc, userSvc: userSvc, botRepo: botRepo, promptRepo: promptRepo, promptCache: promptCache, botMgr: botMgr, logger: log.WithComponent("bot_handler"), maxBots: maxBots, gNotifier: gNotifier}
 }
 
 func (h *BotHandler) StartBot(c fiber.Ctx) error {
-    userID := c.Locals("user_id").(int)
-    role := c.Locals("role").(string)
-    ctx := c
+	userID := c.Locals("user_id").(int)
+	role := c.Locals("role").(string)
+	ctx := c
 
-    // ... (logs existentes) ...
+	// ... (logs existentes) ...
 
-    bots, err := h.botRepo.GetByUser(ctx, userID)
-    if err != nil {
-        return c.JSON(fiber.Map{"status": "error", "message": "Error al verificar bots"})
-    }
+	bots, err := h.botRepo.GetByUser(ctx, userID)
+	if err != nil {
+		return c.JSON(fiber.Map{"status": "error", "message": "Error al verificar bots"})
+	}
 
-    if len(bots) > 0 {
-        bot := bots[0]
-        if bot.Blocked {
-            return c.JSON(fiber.Map{"status": "error", "message": "El bot está bloqueado. Contacta al administrador."})
-        }
+	if len(bots) > 0 {
+		bot := bots[0]
+		if bot.Blocked {
+			return c.JSON(fiber.Map{"status": "error", "message": "El bot está bloqueado. Contacta al administrador."})
+		}
 
-        if role != "admin" {
-            // ... (validaciones de pago) ...
-        }
+		if role != "admin" {
+			// ... (validaciones de pago) ...
+		}
 
-        // 🔹 Si el bot ya está activo
-        if h.botMgr.IsActive(bot.ID) {
-            // --- ASIGNAR ADMIN CLIENT SI ES ADMIN ---
-            if role == "admin" {
-                _ = h.botSvc.SetAdminClientByBotID(bot.ID)
-            }
-            // ---------------------------------------
-            return c.JSON(fiber.Map{"status": "session_exists", "id": bot.ID})
-        }
+		// 🔹 Si el bot ya está activo
+		if h.botMgr.IsActive(bot.ID) {
+			// --- ASIGNAR ADMIN CLIENT SI ES ADMIN ---
+			if role == "admin" {
+				_ = h.botSvc.SetAdminClientByBotID(bot.ID)
+			}
+			// ---------------------------------------
+			return c.JSON(fiber.Map{"status": "session_exists", "id": bot.ID})
+		}
 
-        // 🔹 Si el bot no está activo, lanzarlo
-        result := h.LaunchBot(c, bot.ID)
+		// 🔹 Si el bot no está activo, lanzarlo
+		result := h.LaunchBot(c, bot.ID)
 
-        // --- ASIGNAR ADMIN CLIENT DESPUÉS DE LANZAR (SI ES ADMIN) ---
-        if role == "admin" {
-            go func(bID int) {
-                time.Sleep(2 * time.Second) // esperar a que el bot se registre
-                _ = h.botSvc.SetAdminClientByBotID(bID)
-            }(bot.ID)
-        }
-        // ------------------------------------------------------------
+		// --- ASIGNAR ADMIN CLIENT DESPUÉS DE LANZAR (SI ES ADMIN) ---
+		if role == "admin" {
+			go func(bID int) {
+				time.Sleep(2 * time.Second) // esperar a que el bot se registre
+				_ = h.botSvc.SetAdminClientByBotID(bID)
+			}(bot.ID)
+		}
+		// ------------------------------------------------------------
 
-        return result
-    }
+		return result
+	}
 
-    // 🔹 Crear nuevo bot (si no existe)
-    status := "pending"
-    if role == "admin" {
-        status = "free"
-    }
-    sessionFile := fmt.Sprintf("whatsapp_bot%d.db", userID)
-    newID, err := h.botRepo.Create(ctx, userID, sessionFile, status)
-    if err != nil {
-        return c.JSON(fiber.Map{"status": "error", "message": "Error al crear bot"})
-    }
-    newSessionFile := fmt.Sprintf("whatsapp_bot%d.db", newID)
-    _ = h.botRepo.UpdateSessionFile(ctx, newID, newSessionFile)
+	// 🔹 Crear nuevo bot (si no existe)
+	status := "pending"
+	if role == "admin" {
+		status = "free"
+	}
+	sessionFile := fmt.Sprintf("whatsapp_bot%d.db", userID)
+	newID, err := h.botRepo.Create(ctx, userID, sessionFile, status)
+	if err != nil {
+		return c.JSON(fiber.Map{"status": "error", "message": "Error al crear bot"})
+	}
+	newSessionFile := fmt.Sprintf("whatsapp_bot%d.db", newID)
+	_ = h.botRepo.UpdateSessionFile(ctx, newID, newSessionFile)
 
-    if role == "admin" {
-        result := h.LaunchBot(c, newID)
-        // --- ASIGNAR ADMIN CLIENT DESPUÉS DE LANZAR (SI ES ADMIN) ---
-        go func(bID int) {
-            time.Sleep(2 * time.Second)
-            _ = h.botSvc.SetAdminClientByBotID(bID)
-        }(newID)
-        // ------------------------------------------------------------
-        return result
-    }
+	if role == "admin" {
+		result := h.LaunchBot(c, newID)
+		// --- ASIGNAR ADMIN CLIENT DESPUÉS DE LANZAR (SI ES ADMIN) ---
+		go func(bID int) {
+			time.Sleep(2 * time.Second)
+			_ = h.botSvc.SetAdminClientByBotID(bID)
+		}(newID)
+		// ------------------------------------------------------------
+		return result
+	}
 
-    return c.JSON(fiber.Map{"status": "pending_payment", "id": newID, "payment_status": "pending", "message": "Bot creado. Se requiere confirmación de pago por parte del administrador."})
+	return c.JSON(fiber.Map{"status": "pending_payment", "id": newID, "payment_status": "pending", "message": "Bot creado. Se requiere confirmación de pago por parte del administrador."})
 }
 func (h *BotHandler) LaunchBot(c fiber.Ctx, botID int) error {
 	qrResult := make(chan string, 1)
@@ -197,4 +199,58 @@ func (h *BotHandler) ActiveBots(c fiber.Ctx) error {
 		}
 	}
 	return c.JSON(fiber.Map{"bots": ids})
+}
+
+// StartPairingCode inicia la vinculación por código en lugar de QR
+func (h *BotHandler) StartPairingCode(c fiber.Ctx) error {
+	userID := c.Locals("user_id").(int)
+	role := c.Locals("role").(string)
+
+	// Validar que el usuario tenga un bot
+	bots, err := h.botRepo.GetByUser(c, userID)
+	if err != nil || len(bots) == 0 {
+		return c.Status(404).JSON(fiber.Map{"error": "No tienes un bot activo"})
+	}
+
+	bot := bots[0]
+	if role != "admin" && bot.PaymentStatus != "paid" && bot.PaymentStatus != "free" {
+		return c.Status(403).JSON(fiber.Map{"error": "Pago pendiente"})
+	}
+
+	// Obtener el número de teléfono del usuario (desde la base de datos)
+	user, err := h.userSvc.GetByID(c, userID)
+	if err != nil || user == nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Usuario no encontrado"})
+	}
+
+	phone := strings.TrimPrefix(user.Phone, "+")
+	if phone == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "Número de teléfono no configurado"})
+	}
+
+	// Iniciar pairing code en goroutine
+	resultChan := make(chan string, 1)
+	go h.botSvc.PairBot(bot.ID, phone, resultChan)
+
+	select {
+	case result := <-resultChan:
+		if strings.HasPrefix(result, "ERROR") {
+			return c.Status(500).JSON(fiber.Map{"error": result})
+		}
+		if result == "TIMEOUT" {
+			return c.Status(408).JSON(fiber.Map{"error": "El código expiró. Intenta de nuevo."})
+		}
+		if result == "SUCCESS" {
+			return c.JSON(fiber.Map{"status": "success", "message": "Vinculación exitosa"})
+		}
+		// result es el código de 8 caracteres
+		return c.JSON(fiber.Map{
+			"status":     "pairing_code",
+			"code":       result,
+			"expires_in": 60,
+			"message":    "Introduce este código en WhatsApp > Dispositivos vinculados > Vincular con número de teléfono",
+		})
+	case <-time.After(70 * time.Second):
+		return c.Status(408).JSON(fiber.Map{"error": "Tiempo de espera agotado"})
+	}
 }

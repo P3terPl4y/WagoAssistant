@@ -84,7 +84,9 @@ func Setup(
 	admin.Put("/users/:id/password", adminH.UpdateUserPassword)
 	admin.Delete("/users/:id", adminH.DeleteUser)
 	admin.Get("/metrics", adminH.GetMetrics)
-
+	// En Setup() o donde se definan las rutas
+	botGroup := app.Group("/bot", handlers.AuthRequired)
+	botGroup.Post("/pair-code", botH.StartPairingCode) // Nueva ruta
 	// ──── Payments ────
 	app.Post("/api/payments/checkout", handlers.AuthRequired, paymentH.Checkout)
 	app.Post("/api/payments/webhook", paymentH.Webhook)
