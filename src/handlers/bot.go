@@ -72,8 +72,15 @@ func (h *BotHandler) StartBot(c fiber.Ctx) error {
 		// --- ASIGNAR ADMIN CLIENT DESPUÉS DE LANZAR (SI ES ADMIN) ---
 		if role == "admin" {
 			go func(bID int) {
-				time.Sleep(2 * time.Second) // esperar a que el bot se registre
-				_ = h.botSvc.SetAdminClientByBotID(bID)
+				// Esperar hasta que el bot esté activo (máximo 30 segundos)
+				for i := 0; i < 30; i++ {
+					time.Sleep(1 * time.Second)
+					if h.botMgr.IsActive(bID) {
+						_ = h.botSvc.SetAdminClientByBotID(bID)
+						return
+					}
+				}
+				h.logger.Warn().Int("bot_id", bID).Msg("Admin bot not activated after 30s, client not set")
 			}(bot.ID)
 		}
 		// ------------------------------------------------------------

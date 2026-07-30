@@ -787,7 +787,22 @@ func (s *BotService) SetAdminClientByBotID(botID int) error {
 	// Obtener el cliente activo del bot desde BotManager
 	client := s.botMgr.GetClient(botID)
 	if client == nil {
-		return fmt.Errorf("client not active for bot %d", botID)
+		// El bot aún no está activo, intentar esperar un poco
+		for i := 0; i < 10; i++ {
+			time.Sleep(500 * time.Millisecond)
+			client = s.botMgr.GetClient(botID)
+			if client != nil {
+				break
+			}
+		}
+		if client == nil {
+			return fmt.Errorf("client not active for bot %d after waiting", botID)
+		}
+	}
+
+	// Verificar que el cliente tenga sesión
+	if client.Store == nil || client.Store.ID == nil {
+		return fmt.Errorf("client has no valid session")
 	}
 
 	// Asignar como AdminClient con mutex
