@@ -321,6 +321,7 @@ func (s *BotService) switchHandler(client *whatsmeow.Client, userKey string, bot
 				s.logger.Error().Err(err).Str("recipient", recipient.String()).Msg("Failed to send message")
 			} else {
 				s.logger.Info().Str("recipient", recipient.String()).Msg("Response sent")
+				fmt.Println(res)
 			}
 			s.logger.Info().Int("bot_id", botID).Str("recipient", recipient.String()).Msg("Bot resumed")
 		case strings.Contains(txt, "@Bot"):
@@ -338,6 +339,7 @@ func (s *BotService) switchHandler(client *whatsmeow.Client, userKey string, bot
 			s.logger.Error().Err(err).Str("recipient", recipient.String()).Msg("Failed to send message")
 		} else {
 			s.logger.Info().Str("recipient", recipient.String()).Msg("Response sent")
+			fmt.Println(res)
 		}
 		s.logger.Info().Int("bot_id", botID).Str("recipient", recipient.String()).Msg("Bot paused")
 	case strings.Contains(txt, "Pedido:") || strings.Contains(txt, "Agendar Cita:"):
