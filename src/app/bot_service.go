@@ -703,7 +703,7 @@ func (s *BotService) getContactName(client *whatsmeow.Client, jid types.JID) str
 	if err != nil {
 		return "" // o devolver el número si no se encuentra
 	}
-	return contact.FullName
+	return contact.PushName
 }
 func (s *BotService) RegisterHistoryal(botID int, recipient types.JID, txt string, userName string) error {
 	u, err := s.users.GetUserByBotID(context.Background(), botID)
