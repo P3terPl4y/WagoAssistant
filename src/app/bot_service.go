@@ -348,11 +348,6 @@ func (s *BotService) switchHandler(client *whatsmeow.Client, userKey string, bot
 			}
 		}()
 	default:
-		fmt.Println(recipient.Server)
-		fmt.Println(recipient.User)
-		fmt.Println(recipient.Device)
-		fmt.Println(recipient.RawAgent)
-		fmt.Println(recipient.Integrator)
 
 		go s.respond(client, userKey, botID, recipient, txt)
 	}
