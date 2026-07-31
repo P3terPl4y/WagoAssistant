@@ -1799,10 +1799,10 @@
                         const timeStr = date.toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
                         div.innerHTML = `
                             <div class="msg-header">
-                                <span class="client-name"><i class="fas fa-user"></i> ${p.client}</span>
+                                <span class="client-name"><i class="fas fa-user"></i> ${p.Client}</span>
                             </div>
-                            <div class="msg-body">${p.pedido}</div>
-                            <div class="msg-time">${timeStr}</div>
+                            <div class="msg-body">${p.Text}</div>
+                            <div class="msg-time">${p.CreatedAt}</div>
                         `;
                         list.appendChild(div);
                     });
