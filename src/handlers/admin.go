@@ -6,13 +6,13 @@ import (
 	"App/src/pkg/concurrency"
 	"App/src/pkg/logger"
 	"App/src/ports"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // AdminHandler handles admin-only HTTP endpoints.
@@ -23,14 +23,14 @@ type AdminHandler struct {
 	botRepo    ports.BotRepository
 	promptRepo ports.PromptRepository
 	botMgr     *concurrency.BotManager
-	db         *sql.DB
+	db         *pgxpool.Pool
 	cache      ports.CacheService
 	logger     logger.Logger
 	maxBots    int
 	gNotifier  *notifications.GmailNotifier
 }
 
-func NewAdminHandler(userSvc *app.UserService, botSvc *app.BotService, userRepo ports.UserRepository, botRepo ports.BotRepository, promptRepo ports.PromptRepository, botMgr *concurrency.BotManager, db *sql.DB, cache ports.CacheService, log logger.Logger, maxBots int, gNotifier *notifications.GmailNotifier) *AdminHandler {
+func NewAdminHandler(userSvc *app.UserService, botSvc *app.BotService, userRepo ports.UserRepository, botRepo ports.BotRepository, promptRepo ports.PromptRepository, botMgr *concurrency.BotManager, db *pgxpool.Pool, cache ports.CacheService, log logger.Logger, maxBots int, gNotifier *notifications.GmailNotifier) *AdminHandler {
 	return &AdminHandler{userSvc: userSvc, botSvc: botSvc, userRepo: userRepo, botRepo: botRepo, promptRepo: promptRepo, botMgr: botMgr, db: db, cache: cache, logger: log.WithComponent("admin_handler"), maxBots: maxBots, gNotifier: gNotifier}
 }
 

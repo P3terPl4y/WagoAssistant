@@ -102,7 +102,8 @@ func (s *BotService) GetContainer(botID int) *sqlstore.Container {
 		s.logger.Fatal().Err(err).Str("dir", dir).Msg("Failed to create session db directory")
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 	dbLog := waLog.Stdout("Database", "WARN", true)
 
 	// DSN correcta: _fk=true habilita foreign keys, _busy_timeout=10000, _journal_mode=WAL
@@ -393,7 +394,8 @@ func (s *BotService) switchHandler(client *whatsmeow.Client, userKey string, bot
 			}
 		}()
 	default:
-		ctx := context.Background()
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
 		if s.cache != nil && s.cache.Available() {
 			sub, err := s.subs.Get(ctx, botID)
 			if err == nil && sub != nil && sub.MsgLimit != -1 {
@@ -423,7 +425,8 @@ func (s *BotService) respond(client *whatsmeow.Client, userKey string, botID int
 		return
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 	if s.cache != nil && s.cache.Available() {
 		sub, err := s.subs.Get(ctx, botID)
 		if err == nil && sub != nil && sub.MsgLimit != -1 {
@@ -438,7 +441,12 @@ func (s *BotService) respond(client *whatsmeow.Client, userKey string, botID int
 
 	}
 	if err := s.chat.SaveMessage(ctx, botID, recipient.String(), "user", txt); err != nil {
-		log.Error().Err(err).Msg("Failed to save user message")
+		log.Error().
+			Err(err).
+			Int("bot_id", botID).
+			Str("recipient", recipient.String()).
+			Msg("Failed to save user message")
+		// No retornamos para no interrumpir el flujo, pero el error queda registrado
 	}
 
 	history, err := s.chat.GetHistory(ctx, botID, recipient.String(), int(s.cfg.MaxHistory))
@@ -527,7 +535,12 @@ func (s *BotService) respond(client *whatsmeow.Client, userKey string, botID int
 	}
 
 	if err := s.chat.SaveMessage(ctx, botID, recipient.String(), "assistant", respuestaIA); err != nil {
-		log.Error().Err(err).Msg("Failed to save AI response")
+		log.Error().
+			Err(err).
+			Int("bot_id", botID).
+			Str("recipient", recipient.String()).
+			Msg("Failed to save user message")
+		// No retornamos para no interrumpir el flujo, pero el error queda registrado
 	}
 
 	_, err = client.SendMessage(context.Background(), recipient, &waE2E.Message{Conversation: &respuestaIA})
@@ -730,7 +743,8 @@ func (s *BotService) StartAdminBot() {
 		backoff := 5 * time.Second
 		const maxBackoff = 2 * time.Minute
 		for {
-			ctx := context.Background()
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
 			container := s.GetContainer(adminBot.ID)
 			deviceStore, err := container.GetFirstDevice(ctx)
 			if err != nil || deviceStore == nil {
@@ -824,7 +838,8 @@ func (s *BotService) RegisterHistoryal(botID int, recipient types.JID, txt strin
 
 // SetAdminClientByBotID asigna el cliente del bot dado como AdminClient si el bot pertenece a un admin.
 func (s *BotService) SetAdminClientByBotID(botID int) error {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 	bot, err := s.bots.GetByID(ctx, botID)
 	if err != nil || bot == nil {
 		return fmt.Errorf("bot not found")

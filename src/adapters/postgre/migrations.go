@@ -2,36 +2,36 @@ package postgre
 
 import (
 	"App/src/pkg/logger"
+	"context"
 	"database/sql"
 
-	_ "github.com/lib/pq" // PostgreSQL
+	"github.com/jackc/pgx/v5/pgxpool"
 
+	_ "github.com/lib/pq" // PostgreSQL
 	"golang.org/x/crypto/bcrypt"
 )
 
 // Connect opens a Postgre database connection and initializes the schema.
 // The database file and its parent directory are created automatically if they don't exist.
-func Connect(dbPath string, log logger.Logger) *sql.DB {
+func Connect(dbPath string, log logger.Logger) (*pgxpool.Pool, context.Context) {
 	// Open with WAL mode and foreign keys enabled for better concurrency
-	db, err := sql.Open("postgres", dbPath)
+	config, _ := pgxpool.ParseConfig(dbPath)
+	config.MaxConns = 25
+	ctx := context.Background()
+	pool, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to open Postgre database")
-	}
-	if err = db.Ping(); err != nil {
-		log.Fatal().Err(err).Msg("Database ping failed")
+		log.Fatal().Err(err).Msg("Failed to connect to PostgreSQL")
 	}
 
 	// SQLite performs best with limited connections
-	db.SetMaxOpenConns(1)
-	db.SetMaxIdleConns(1)
 
-	runMigrations(db, log)
+	runMigrations(pool, ctx, log)
 	log.Info().Str("path", dbPath).Msg("Postgre database initialized")
-	return db
+	return pool, ctx
 }
 
 // runMigrations creates tables and applies schema migrations.
-func runMigrations(db *sql.DB, log logger.Logger) {
+func runMigrations(pool *pgxpool.Pool, ctx context.Context, log logger.Logger) {
 	createTables := `
 	CREATE TABLE IF NOT EXISTS users (
 		id SERIAL PRIMARY KEY,
@@ -82,21 +82,24 @@ func runMigrations(db *sql.DB, log logger.Logger) {
 		created_at DATE DEFAULT CURRENT_TIMESTAMP,
 		updated_at DATE DEFAULT CURRENT_TIMESTAMP,
 		PRIMARY KEY (user_id, provider)
-	);`
+	);
+	CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_chat_history_bot_id_created_at ON chat_history(bot_id, created_at DESC);
+	CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_bots_user_id ON bots(user_id);
+	CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_pedidos_user_id_created_at ON pedidos(user_id, created_at DESC);`
 
-	if _, err := db.Exec(createTables); err != nil {
+	if _, err := pool.Exec(ctx, createTables); err != nil {
 		log.Fatal().Err(err).Msg("Failed to run migrations")
 	}
 
 	// Safe column additions for SQLite (check if column exists first)
-	addColumnIfNotExists(db, "bots", "payment_status", "TEXT DEFAULT 'free'")
-	addColumnIfNotExists(db, "subscriptions", "tier", "TEXT DEFAULT 'free'")
-	addColumnIfNotExists(db, "subscriptions", "msg_limit", "INTEGER DEFAULT 10")
+	addColumnIfNotExists(pool, ctx, "bots", "payment_status", "TEXT DEFAULT 'free'")
+	addColumnIfNotExists(pool, ctx, "subscriptions", "tier", "TEXT DEFAULT 'free'")
+	addColumnIfNotExists(pool, ctx, "subscriptions", "msg_limit", "INTEGER DEFAULT 10")
 }
 
 // addColumnIfNotExists safely adds a column to a table if it doesn't already exist.
-func addColumnIfNotExists(db *sql.DB, table, column, colType string) {
-	rows, err := db.Query("PRAGMA table_info(" + table + ")")
+func addColumnIfNotExists(pool *pgxpool.Pool, ctx context.Context, table, column, colType string) {
+	rows, err := pool.Query(ctx, "PRAGMA table_info("+table+")")
 	if err != nil {
 		return
 	}
@@ -116,18 +119,18 @@ func addColumnIfNotExists(db *sql.DB, table, column, colType string) {
 		}
 	}
 
-	_, _ = db.Exec("ALTER TABLE " + table + " ADD COLUMN " + column + " " + colType)
+	_, _ = pool.Exec(ctx, "ALTER TABLE "+table+" ADD COLUMN "+column+" "+colType)
 }
 
 // EnsureAdmin creates the default admin user if none exists.
-func EnsureAdmin(db *sql.DB, username, email, phone, password string, log logger.Logger) {
+func EnsureAdmin(ctx context.Context, pool *pgxpool.Pool, username, email, phone, password string, log logger.Logger) {
 	var count int
-	if err := db.QueryRow(`SELECT COUNT(*) FROM users WHERE role = 'admin'`).Scan(&count); err != nil {
+	if err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM users WHERE role = 'admin'`).Scan(&count); err != nil {
 		log.Fatal().Err(err).Msg("Failed to query admin count")
 	}
 	if count == 0 {
 		hashed, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-		_, err := db.Exec(
+		_, err := pool.Exec(ctx,
 			`INSERT INTO users (username, email, phone, password_hash, role) VALUES ($1, $2, $3, $4, 'admin')`,
 			username, email, phone, string(hashed),
 		)

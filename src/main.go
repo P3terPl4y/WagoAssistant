@@ -60,9 +60,9 @@ func main() {
 	// ============================================================
 	// 2. DATABASE (Postgre)
 	// ============================================================
-	db := postgre.Connect(cfg.DatabaseURL, log)
+	db, ctx := postgre.Connect(cfg.DatabaseURL, log)
 	defer db.Close()
-	postgre.EnsureAdmin(db, cfg.AdminUsername, cfg.AdminEmail, cfg.AdminPhone, cfg.AdminPass, log)
+	postgre.EnsureAdmin(ctx, db, cfg.AdminUsername, cfg.AdminEmail, cfg.AdminPhone, cfg.AdminPass, log)
 
 	// ============================================================
 	// 3. REPOSITORIES
