@@ -401,7 +401,7 @@ func (s *BotService) switchHandler(client *whatsmeow.Client, userKey string, bot
 			exceeded, usage, err := s.checkRateLimit(ctx, botID)
 			if err != nil {
 				s.logger.Error().Err(err).Msg("Rate limit check failed")
-			} else if exceeded {
+			} else if exceeded && botID != s.AdminBotID {
 				s.logger.Warn().Int("usage", usage).Int("limit", usage).Msg("Rate limit exceeded (checked in respond)")
 				limitMsg := "🤖 Has superado el límite diario de mensajes para tu plan de suscripción."
 				_, _ = client.SendMessage(ctx, recipient, &waE2E.Message{Conversation: &limitMsg})
@@ -429,7 +429,7 @@ func (s *BotService) respond(client *whatsmeow.Client, userKey string, botID int
 		exceeded, usage, err := s.checkRateLimit(ctx, botID)
 		if err != nil {
 			s.logger.Error().Err(err).Msg("Rate limit check failed")
-		} else if exceeded {
+		} else if exceeded && botID != s.AdminBotID {
 			s.logger.Warn().Int("usage", usage).Int("limit", usage).Msg("Rate limit exceeded (checked in respond)")
 			limitMsg := "🤖 Has superado el límite diario de mensajes para tu plan de suscripción."
 			_, _ = client.SendMessage(ctx, recipient, &waE2E.Message{Conversation: &limitMsg})
