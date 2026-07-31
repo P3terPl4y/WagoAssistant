@@ -1788,6 +1788,7 @@
                     headers: { 'X-CSRF-Token': getCsrfToken() }
                 });
                 const data = await response.json();
+                console.log(data)
                 if (data.pedidos && data.pedidos.length > 0) {
                     if (!append) list.innerHTML = '';
                     data.pedidos.forEach(p => {
