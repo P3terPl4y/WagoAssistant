@@ -9,23 +9,20 @@ import (
 	"App/src/pkg/logger"
 
 	"github.com/segmentio/kafka-go"
+	"golang.org/x/time/rate"
 )
 
 type Consumer struct {
-	reader  *kafka.Reader
-	config  Config
-	logger  logger.Logger
-	handler MessageHandler
-	ctx     context.Context
-	cancel  context.CancelFunc
-	wg      sync.WaitGroup
+	reader    *kafka.Reader
+	config    Config
+	logger    logger.Logger
+	ctx       context.Context
+	cancel    context.CancelFunc
+	wg        sync.WaitGroup
+	limiter   *rate.Limiter
+	workerSem chan struct{} // semáforo para controlar número de workers activos
 }
 
-type MessageHandler interface {
-	HandleMessage(ctx context.Context, msg *IncomingMessage) error
-}
-
-// Función de callback para procesar mensajes (se inyecta desde BotService)
 type ProcessMessageFunc func(botID int, senderJID string, text string, userKey string) error
 
 func NewConsumer(config Config, log logger.Logger, handler ProcessMessageFunc) (*Consumer, error) {
@@ -35,12 +32,26 @@ func NewConsumer(config Config, log logger.Logger, handler ProcessMessageFunc) (
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	consumer := &Consumer{
-		config: config,
-		logger: log.WithComponent("kafka_consumer"),
-		ctx:    ctx,
-		cancel: cancel,
+	// Configurar rate limiter: llamadas por segundo
+	limit := rate.Limit(config.RateLimit) // ej: 0.5 => 1 cada 2 segundos
+	limiter := rate.NewLimiter(limit, 1)
+
+	// Número máximo de workers concurrentes
+	workerLimit := config.WorkerCount
+	if workerLimit <= 0 {
+		workerLimit = 5 // valor por defecto
 	}
+	workerSem := make(chan struct{}, workerLimit)
+
+	consumer := &Consumer{
+		config:    config,
+		logger:    log.WithComponent("kafka_consumer"),
+		ctx:       ctx,
+		cancel:    cancel,
+		limiter:   limiter,
+		workerSem: workerSem,
+	}
+
 	consumer.reader = kafka.NewReader(kafka.ReaderConfig{
 		Brokers:        config.Brokers,
 		GroupID:        config.ConsumerGroup,
@@ -48,93 +59,108 @@ func NewConsumer(config Config, log logger.Logger, handler ProcessMessageFunc) (
 		MinBytes:       10e3,
 		MaxBytes:       10e6,
 		MaxWait:        1 * time.Second,
-		CommitInterval: 2 * time.Second,
+		CommitInterval: 0, // commits manuales
 		StartOffset:    kafka.LastOffset,
-		// Remove: AllowAutoTopicCreation: true,
 	})
 
 	consumer.logger.Info().
 		Str("topic", config.TopicIncoming).
 		Str("group", config.ConsumerGroup).
-		Msg("Kafka consumer initialized")
+		Int("workers", workerLimit).
+		Float64("rate_limit", float64(limit)).
+		Msg("Kafka consumer initialized with async workers")
 
-	// Iniciar el loop de consumo en goroutine
+	// Iniciar el lector y despachador de mensajes
 	consumer.wg.Add(1)
-	go consumer.start(handler)
+	go consumer.dispatch(handler)
 
 	return consumer, nil
 }
 
-func (c *Consumer) start(handler ProcessMessageFunc) {
+func (c *Consumer) dispatch(handler ProcessMessageFunc) {
 	defer c.wg.Done()
-	c.logger.Info().
-		Dur("interval", c.config.ProcessInterval).
-		Msg("Kafka consumer loop started with processing interval")
+	c.logger.Info().Msg("Kafka dispatcher started")
 
 	for {
 		select {
 		case <-c.ctx.Done():
-			c.logger.Info().Msg("Kafka consumer stopping...")
+			c.logger.Info().Msg("Dispatcher stopping...")
 			return
 		default:
+			// Leer mensaje (bloqueante)
 			msg, err := c.reader.ReadMessage(c.ctx)
 			if err != nil {
 				if err == context.Canceled {
 					return
 				}
 				c.logger.Error().Err(err).Msg("Failed to read message from Kafka")
-				time.Sleep(1 * time.Second)
+				time.Sleep(500 * time.Millisecond)
 				continue
 			}
 
-			var incoming IncomingMessage
-			if err := json.Unmarshal(msg.Value, &incoming); err != nil {
-				c.logger.Error().
-					Err(err).
-					Bytes("raw", msg.Value).
-					Msg("Failed to unmarshal Kafka message")
-				continue
-			}
-
-			c.logger.Debug().
-				Int("bot_id", incoming.BotID).
-				Str("sender", incoming.SenderJID).
-				Int64("offset", msg.Offset).
-				Msg("Processing message from Kafka")
-
-			// Procesar mensaje (llamada a la IA)
-			err = handler(incoming.BotID, incoming.SenderJID, incoming.Text, incoming.UserKey)
-			if err != nil {
-				c.logger.Error().
-					Err(err).
-					Int("bot_id", incoming.BotID).
-					Msg("Handler failed, will retry (no commit)")
-				// No se hace commit, se reintentará en la siguiente lectura
-				continue
-			}
-
-			// Commit del offset solo después de procesar exitosamente
-			if err := c.reader.CommitMessages(c.ctx, msg); err != nil {
-				c.logger.Warn().
-					Err(err).
-					Int64("offset", msg.Offset).
-					Msg("Failed to commit offset, will retry")
-				continue
-			}
-
-			c.logger.Debug().
-				Int("bot_id", incoming.BotID).
-				Msg("Message processed and committed, waiting before next...")
-
-			// ⏳ ESPERA OBLIGATORIA: evita saturar la IA
+			// Ocupar un slot del semáforo (limita workers concurrentes)
 			select {
+			case c.workerSem <- struct{}{}:
+				// Slot disponible, lanzar worker
 			case <-c.ctx.Done():
 				return
-			case <-time.After(c.config.ProcessInterval):
-				// Continuar al siguiente mensaje
 			}
+
+			c.wg.Add(1)
+			go c.processMessage(msg, handler)
 		}
 	}
+}
+
+func (c *Consumer) processMessage(msg kafka.Message, handler ProcessMessageFunc) {
+	defer c.wg.Done()
+	defer func() { <-c.workerSem }() // liberar slot al terminar
+
+	// 1. Esperar a que el rate limiter permita la llamada a IA
+	if err := c.limiter.Wait(c.ctx); err != nil {
+		if err == context.Canceled {
+			return
+		}
+		c.logger.Error().Err(err).Msg("Rate limiter wait failed")
+		return
+	}
+
+	// 2. Deserializar mensaje
+	var incoming IncomingMessage
+	if err := json.Unmarshal(msg.Value, &incoming); err != nil {
+		c.logger.Error().
+			Err(err).
+			Bytes("raw", msg.Value).
+			Msg("Failed to unmarshal Kafka message")
+		// No se commitea, se perderá el mensaje (puede ir a DLQ)
+		return
+	}
+
+	// 3. Ejecutar handler (llama a la IA y procesa)
+	err := handler(incoming.BotID, incoming.SenderJID, incoming.Text, incoming.UserKey)
+	if err != nil {
+		c.logger.Error().
+			Err(err).
+			Int("bot_id", incoming.BotID).
+			Msg("Handler failed, message will be retried (no commit)")
+		// No se commitea, Kafka lo reintentará automáticamente
+		return
+	}
+
+	// 4. Commit del offset solo si fue exitoso
+	if err := c.reader.CommitMessages(c.ctx, msg); err != nil {
+		c.logger.Warn().
+			Err(err).
+			Int64("offset", msg.Offset).
+			Msg("Failed to commit offset, will retry")
+		// Si falla el commit, el mensaje se reprocesará (puede causar duplicados)
+		return
+	}
+
+	c.logger.Debug().
+		Int("bot_id", incoming.BotID).
+		Int64("offset", msg.Offset).
+		Msg("Message processed and committed")
 }
 
 func (c *Consumer) Close() error {
