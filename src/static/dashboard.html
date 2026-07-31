@@ -1789,7 +1789,7 @@
                 });
                 const data = await response.json();
                 console.log(data)
-                if (data.pedidos && data.pedidos.length > 0) {
+                if (data && data.length > 0) {
                     if (!append) list.innerHTML = '';
                     data.forEach(p => {
                         console.log(p)
