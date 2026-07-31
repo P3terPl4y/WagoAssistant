@@ -4,6 +4,7 @@ import (
 	"App/src/domain"
 	"context"
 	"database/sql"
+	"fmt"
 )
 
 // BotRepo implements ports.BotRepository using PostgreSQL.
@@ -93,6 +94,7 @@ func (r *BotRepo) Create(ctx context.Context, userID int, sessionFile, paymentSt
 
 func (r *BotRepo) UpdateBlocked(ctx context.Context, id int, blocked bool) error {
 	_, err := r.db.ExecContext(ctx, `UPDATE bots SET blocked = $1 WHERE id = $2`, blocked, id)
+	fmt.Println(err)
 	return err
 }
 
