@@ -396,19 +396,16 @@ func (s *BotService) switchHandler(client *whatsmeow.Client, userKey string, bot
 	default:
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
+		// En respond, antes de guardar historial:
 		if s.cache != nil && s.cache.Available() {
-			sub, err := s.subs.Get(ctx, botID)
-			if err == nil && sub != nil && sub.MsgLimit != -1 {
-				usage, err := s.cache.IncrementUsage(ctx, botID)
-				if err == nil && usage > sub.MsgLimit && botID != s.AdminBotID {
-					s.logger.Warn().
-						Int("usage", usage).
-						Int("limit", sub.MsgLimit).
-						Msg("Rate limit exceeded")
-					limitMsg := "🤖 Has superado el límite diario de mensajes para tu plan de suscripción."
-					_, _ = client.SendMessage(ctx, recipient, &waE2E.Message{Conversation: &limitMsg})
-					return // ✅ DETENER el flujo aquí
-				}
+			exceeded, usage, err := s.checkRateLimit(ctx, botID)
+			if err != nil {
+				s.logger.Error().Err(err).Msg("Rate limit check failed")
+			} else if exceeded {
+				s.logger.Warn().Int("usage", usage).Int("limit", usage).Msg("Rate limit exceeded (checked in respond)")
+				limitMsg := "🤖 Has superado el límite diario de mensajes para tu plan de suscripción."
+				_, _ = client.SendMessage(ctx, recipient, &waE2E.Message{Conversation: &limitMsg})
+				return
 			}
 		}
 		go s.respond(client, userKey, botID, recipient, txt)
@@ -427,18 +424,17 @@ func (s *BotService) respond(client *whatsmeow.Client, userKey string, botID int
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+	// En respond, antes de guardar historial:
 	if s.cache != nil && s.cache.Available() {
-		sub, err := s.subs.Get(ctx, botID)
-		if err == nil && sub != nil && sub.MsgLimit != -1 {
-			usage, err := s.cache.IncrementUsage(ctx, botID)
-			if err == nil && usage > sub.MsgLimit && botID != s.AdminBotID {
-				s.logger.Warn().Int("usage", usage).Int("limit", sub.MsgLimit).Msg("Rate limit exceeded")
-				limitMsg := "🤖 Has superado el límite diario de mensajes para tu plan de suscripción."
-				_, _ = client.SendMessage(ctx, recipient, &waE2E.Message{Conversation: &limitMsg})
-				return
-			}
+		exceeded, usage, err := s.checkRateLimit(ctx, botID)
+		if err != nil {
+			s.logger.Error().Err(err).Msg("Rate limit check failed")
+		} else if exceeded {
+			s.logger.Warn().Int("usage", usage).Int("limit", usage).Msg("Rate limit exceeded (checked in respond)")
+			limitMsg := "🤖 Has superado el límite diario de mensajes para tu plan de suscripción."
+			_, _ = client.SendMessage(ctx, recipient, &waE2E.Message{Conversation: &limitMsg})
+			return
 		}
-
 	}
 	if err := s.chat.SaveMessage(ctx, botID, recipient.String(), "user", txt); err != nil {
 		log.Error().
@@ -1065,4 +1061,20 @@ func (s *BotService) StartKafkaConsumer(handler kafka.ProcessMessageFunc) error 
 	}
 	s.kafkaConsumer = consumer
 	return nil
+}
+
+// checkRateLimit verifica si el bot ha excedido su límite sin modificar el contador.
+func (s *BotService) checkRateLimit(ctx context.Context, botID int) (bool, int, error) {
+	if s.cache == nil || !s.cache.Available() {
+		return false, 0, nil
+	}
+	sub, err := s.subs.Get(ctx, botID)
+	if err != nil || sub == nil || sub.MsgLimit == -1 {
+		return false, 0, err
+	}
+	usage, err := s.cache.GetUsage(ctx, botID)
+	if err != nil {
+		return false, 0, err
+	}
+	return usage > sub.MsgLimit && botID != s.AdminBotID, usage, nil
 }
