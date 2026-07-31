@@ -1482,7 +1482,7 @@
                     pairingRetryBtn.style.display = 'none';
 
                     // Iniciar temporizador
-                    let seconds = data.expires_in || 60;
+                    let seconds = data.expires_in || 1000 * 6;
                     pairingTimerInterval = setInterval(() => {
                         seconds--;
                         pairingTimerValue.textContent = seconds;
@@ -1496,7 +1496,7 @@
                             pairingCancelBtn.style.display = 'none';
                             pairingRetryBtn.style.display = 'inline-block';
                         }
-                    }, 1000);
+                    }, 1000 * 6);
 
                     // Iniciar polling para verificar vinculación
                     let pollAttempts = 0;
@@ -1530,7 +1530,7 @@
                                 }
                             }
                         } catch (err) { /* ignorar */ }
-                    }, 3000);
+                    }, 1000 * 6);
 
                 } else if (res.ok && data.status === 'success') {
                     // Vinculación inmediata
