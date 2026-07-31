@@ -393,6 +393,22 @@ func (s *BotService) switchHandler(client *whatsmeow.Client, userKey string, bot
 			}
 		}()
 	default:
+		ctx := context.Background()
+		if s.cache != nil && s.cache.Available() {
+			sub, err := s.subs.Get(ctx, botID)
+			if err == nil && sub != nil && sub.MsgLimit != -1 {
+				usage, err := s.cache.IncrementUsage(ctx, botID)
+				if err == nil && usage > sub.MsgLimit && botID != s.AdminBotID {
+					s.logger.Warn().
+						Int("usage", usage).
+						Int("limit", sub.MsgLimit).
+						Msg("Rate limit exceeded")
+					limitMsg := "🤖 Has superado el límite diario de mensajes para tu plan de suscripción."
+					_, _ = client.SendMessage(ctx, recipient, &waE2E.Message{Conversation: &limitMsg})
+					return
+				}
+			}
+		}
 		go s.respond(client, userKey, botID, recipient, txt)
 
 	}
@@ -522,12 +538,6 @@ func (s *BotService) respond(client *whatsmeow.Client, userKey string, botID int
 	}
 }
 
-// notifyAdmin envía una notificación al dueño del bot usando el bot administrador.
-// Si el admin bot no está conectado, envía un correo electrónico como fallback.
-// Logs detallados para facilitar la depuración.
-// notifyAdmin envía una notificación al dueño del bot usando el bot administrador.
-// Si el admin bot no está conectado, envía un correo electrónico como fallback.
-// Logs detallados para facilitar la depuración.
 func (s *BotService) notifyAdmin(botID int, clientJID types.JID, msg string) {
 	// Log de inicio
 	s.logger.Info().
@@ -774,24 +784,19 @@ func (s *BotService) StartAdminBot() {
 func (s *BotService) getContact(client *whatsmeow.Client, jid types.JID) (string, string) {
 	contact, err := client.Store.Contacts.GetContact(context.Background(), jid)
 	if err != nil {
-		return "", "" // o devolver el número si no se encuentra
+		return "", ""
 	}
-	if jid.Server == types.DefaultUserServer { // "s.whatsapp.net"
+	if jid.Server == types.DefaultUserServer {
 		return contact.PushName, jid.User
 	}
-
-	// Si es un LID (@lid), intentar resolverlo a un número de teléfono
-	if jid.Server == types.HiddenUserServer { // "lid"
+	if jid.Server == types.HiddenUserServer {
 		pnJID, err := client.Store.LIDs.GetPNForLID(context.Background(), jid)
-		if err != nil {
-			// pnJID.User contiene el número de teléfono
+		if err == nil && pnJID.User != "" {
 			return contact.PushName, pnJID.User
 		}
-		// Si no se puede resolver, se puede devolver el User del LID como fallback
+		// Fallback seguro
 		return contact.PushName, jid.User
 	}
-
-	// Para otros casos (grupos, etc.), devolver el User
 	return contact.PushName, jid.User
 }
 func (s *BotService) RegisterHistoryal(botID int, recipient types.JID, txt string, userName string, phone string) error {
@@ -820,12 +825,10 @@ func (s *BotService) RegisterHistoryal(botID int, recipient types.JID, txt strin
 // SetAdminClientByBotID asigna el cliente del bot dado como AdminClient si el bot pertenece a un admin.
 func (s *BotService) SetAdminClientByBotID(botID int) error {
 	ctx := context.Background()
-
 	bot, err := s.bots.GetByID(ctx, botID)
 	if err != nil || bot == nil {
 		return fmt.Errorf("bot not found")
 	}
-
 	user, err := s.users.GetByID(ctx, bot.UserID)
 	if err != nil || user == nil {
 		return fmt.Errorf("user not found")
@@ -834,14 +837,14 @@ func (s *BotService) SetAdminClientByBotID(botID int) error {
 		return fmt.Errorf("user is not admin")
 	}
 
-	// Esperar hasta que el cliente esté disponible
+	// Esperar hasta que el cliente esté disponible con backoff
 	var client *whatsmeow.Client
-	for i := 0; i < 20; i++ {
+	for i := 0; i < 30; i++ {
 		client = s.botMgr.GetClient(botID)
 		if client != nil && client.Store != nil && client.Store.ID != nil {
 			break
 		}
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(time.Duration(i+1) * 200 * time.Millisecond) // backoff progresivo
 	}
 	if client == nil || client.Store == nil || client.Store.ID == nil {
 		return fmt.Errorf("client not active for bot %d after waiting", botID)
@@ -857,7 +860,6 @@ func (s *BotService) SetAdminClientByBotID(botID int) error {
 		Int("bot_id", botID).
 		Str("jid", s.AdminJID.String()).
 		Msg("✅ Admin client set successfully")
-
 	return nil
 }
 

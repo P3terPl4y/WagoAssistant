@@ -14,14 +14,15 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v3/client"
+	"github.com/sony/gobreaker"
 )
 
 // Sanitization patterns (same as original)
 var (
-	reChatmlTokens  = regexp.MustCompile(`<\|[^|>]+\|>`)
-	reThinkBlocks   = regexp.MustCompile(`(?s)<think>.*?</think>`)
-	reRoleLines     = regexp.MustCompile(`(?m)^\s*(assistant|user|system)\s*$`)
-	reMultiNewline  = regexp.MustCompile(`\n{3,}`)
+	reChatmlTokens = regexp.MustCompile(`<\|[^|>]+\|>`)
+	reThinkBlocks  = regexp.MustCompile(`(?s)<think>.*?</think>`)
+	reRoleLines    = regexp.MustCompile(`(?m)^\s*(assistant|user|system)\s*$`)
+	reMultiNewline = regexp.MustCompile(`\n{3,}`)
 )
 
 func sanitizeResponse(text string) string {
@@ -54,10 +55,19 @@ type aiSource struct {
 	fn   func(ctx context.Context, prompt string) (string, error)
 }
 
-// Call sends a prompt and returns the response, with automatic failover.
-func (m *MultiProvider) Call(ctx context.Context, prompt string) (string, error) {
-	turn := atomic.AddUint32(&m.sourceIndex, 1) % 3
+var aiCircuitBreaker = gobreaker.NewCircuitBreaker(gobreaker.Settings{
+	Name:        "AI Provider",
+	MaxRequests: 3,
+	Timeout:     10 * time.Second,
+	ReadyToTrip: func(counts gobreaker.Counts) bool {
+		failureRatio := float64(counts.TotalFailures) / float64(counts.Requests)
+		return counts.Requests >= 3 && failureRatio >= 0.6
+	},
+})
 
+// callProvider ejecuta la lógica de fallback entre proveedores.
+func (m *MultiProvider) callProvider(ctx context.Context, prompt string) (string, error) {
+	turn := atomic.AddUint32(&m.sourceIndex, 1) % 3
 	sources := []aiSource{
 		{"OpenRouter", m.callOpenRouter},
 		{"Legacy", m.callLegacy},
@@ -65,7 +75,6 @@ func (m *MultiProvider) Call(ctx context.Context, prompt string) (string, error)
 	if m.cfg.LocalEnabled {
 		sources = append(sources, aiSource{"Local", m.callLocal})
 	}
-
 	for i := 0; i < len(sources); i++ {
 		idx := (int(turn) + i) % len(sources)
 		s := sources[idx]
@@ -79,6 +88,17 @@ func (m *MultiProvider) Call(ctx context.Context, prompt string) (string, error)
 		m.logger.Warn().Str("source", s.name).Int("attempt", i+1).Err(err).Msg("AI source failed")
 	}
 	return "", fmt.Errorf("all AI providers failed")
+}
+
+// Call sends a prompt and returns the response, with automatic failover.
+func (m *MultiProvider) Call(ctx context.Context, prompt string) (string, error) {
+	result, err := aiCircuitBreaker.Execute(func() (interface{}, error) {
+		return m.callProvider(ctx, prompt)
+	})
+	if err != nil {
+		return "", err
+	}
+	return result.(string), nil
 }
 
 // --- OpenRouter ---

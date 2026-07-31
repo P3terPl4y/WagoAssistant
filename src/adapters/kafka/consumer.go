@@ -172,3 +172,15 @@ func (c *Consumer) Close() error {
 	}
 	return nil
 }
+
+/* Configuración dinámica basada en el proveedor
+func (c *Consumer) getRateLimit() float64 {
+	// Leer de una variable de entorno o de un endpoint de configuración
+	if os.Getenv("KAFKA_RATE_LIMIT") != "" {
+		limit, _ := strconv.ParseFloat(os.Getenv("KAFKA_RATE_LIMIT"), 64)
+		return limit
+	}
+	// Valor por defecto para OpenRouter free: 0.5 req/s
+	return 0.5
+}
+*/

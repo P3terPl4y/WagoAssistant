@@ -11,6 +11,7 @@ type IncomingMessage struct {
 	Text       string    `json:"text"`
 	UserKey    string    `json:"user_key"`
 	ReceivedAt time.Time `json:"received_at"`
+	RetryCount int       `json:"retry_count"`
 }
 
 func (m *IncomingMessage) ToJSON() ([]byte, error) {
