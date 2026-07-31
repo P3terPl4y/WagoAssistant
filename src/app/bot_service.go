@@ -1,6 +1,7 @@
 package app
 
 import (
+	"App/src/adapters/kafka"
 	"App/src/adapters/notifications"
 	"App/src/config"
 	"App/src/domain"
@@ -52,6 +53,11 @@ type BotService struct {
 	AdminClient *whatsmeow.Client
 	AdminJID    types.JID
 	AdminBotID  int
+
+	kafkaProducer *kafka.Producer
+	kafkaConsumer *kafka.Consumer
+	kafkaEnabled  bool
+	kafkaConfig   kafka.Config
 }
 
 // NewBotService creates a new BotService with all dependencies.
@@ -70,14 +76,16 @@ func NewBotService(
 	log logger.Logger,
 	cfg *config.Config,
 	gNotifier *notifications.GmailNotifier,
+	kafkaConfig kafka.Config,
 ) *BotService {
 	return &BotService{
 		bots: bots, prompts: prompts, subs: subs, users: users,
 		chat: chat, ai: ai, botMgr: botMgr, promptCache: promptCache,
 		dedup: dedup, userSem: userSem, cache: cache, logger: log.WithComponent("bot_service"),
-		cfg: cfg, gNotifier: gNotifier, containers: make(map[int]*sqlstore.Container),
+		cfg: cfg, gNotifier: gNotifier, kafkaEnabled: kafkaConfig.Enabled, containers: make(map[int]*sqlstore.Container),
 		blocked: make(map[types.JID]bool),
 	}
+
 }
 
 // GetContainer returns or creates a WhatsApp session container for a bot.
@@ -301,7 +309,28 @@ func (s *BotService) handleMessage(client *whatsmeow.Client, botID int, v *event
 
 	senderJID := v.Info.Sender.ToNonAD()
 	userKey := fmt.Sprintf("%d:%s", botID, senderJID.String())
-	s.logger.Info().Int("bot_id", botID).Str("sender", senderJID.String()).Str("text", text).Msg("Message received")
+
+	// Si Kafka está habilitado, publicar mensaje
+	if s.kafkaEnabled && s.kafkaProducer != nil {
+		msg := &kafka.IncomingMessage{
+			BotID:      botID,
+			SenderJID:  senderJID.String(),
+			Text:       text,
+			UserKey:    userKey,
+			ReceivedAt: time.Now(),
+		}
+		if err := s.kafkaProducer.Publish(ctx, msg); err != nil {
+			s.logger.Error().
+				Err(err).
+				Int("bot_id", botID).
+				Msg("Kafka publish failed, falling back to synchronous processing")
+			// Fallback: procesar síncronamente si Kafka falla
+			s.switchHandler(client, userKey, botID, senderJID, text)
+		}
+		return
+	}
+
+	// Modo sin Kafka: procesar directamente
 	go s.switchHandler(client, userKey, botID, senderJID, text)
 }
 
@@ -989,4 +1018,34 @@ func (s *BotService) addEventHandlers(client *whatsmeow.Client, botID int, ctx c
 			cancel()
 		}
 	})
+}
+
+// ProcessKafkaMessage es el handler que será llamado por el consumidor de Kafka.
+func (s *BotService) ProcessKafkaMessage(botID int, senderJID string, text string, userKey string) error {
+	// Obtener el cliente del bot desde BotManager
+	client := s.botMgr.GetClient(botID)
+	if client == nil {
+		return fmt.Errorf("bot %d not active", botID)
+	}
+
+	// Parsear JID
+	jid, err := types.ParseJID(senderJID)
+	if err != nil {
+		return fmt.Errorf("invalid JID: %w", err)
+	}
+
+	// Ejecutar switchHandler con el cliente y JID
+	s.switchHandler(client, userKey, botID, jid, text)
+	return nil
+}
+func (s *BotService) StartKafkaConsumer(handler kafka.ProcessMessageFunc) error {
+	if !s.kafkaEnabled {
+		return nil
+	}
+	consumer, err := kafka.NewConsumer(s.kafkaConfig, s.logger, handler)
+	if err != nil {
+		return err
+	}
+	s.kafkaConsumer = consumer
+	return nil
 }

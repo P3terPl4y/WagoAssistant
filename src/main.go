@@ -3,6 +3,7 @@ package main
 import (
 	"App/src/adapters/ai"
 	"App/src/adapters/encryption"
+	"App/src/adapters/kafka"
 	"App/src/adapters/notifications"
 	adapterRedis "App/src/adapters/redis"
 
@@ -81,6 +82,7 @@ func main() {
 	// ============================================================
 	// 5. SERVICES
 	// ============================================================
+	kafkaConfig := kafka.LoadKafkaConfig()
 	encSvc := encryption.NewAESGCM(cfg.EncryptionKey)
 	aiSvc := ai.NewMultiProvider(cfg.AI, log)
 	botMgr := concurrency.NewBotManager(log)
@@ -92,8 +94,14 @@ func main() {
 	chatSvc := app.NewChatService(chatRepo, encSvc, redisCache, log, cfg.MaxHistory, cfg.MaxHistoryChars)
 	botSvc := app.NewBotService(
 		botRepo, promptRepo, subRepo, userRepo, chatSvc, aiSvc,
-		botMgr, promptCache, dedup, userSem, redisCache, log, cfg, gNotifier)
-
+		botMgr, promptCache, dedup, userSem, redisCache, log, cfg, gNotifier, kafkaConfig)
+	// Iniciar consumidor de Kafka (si está habilitado)
+	if kafkaConfig.Enabled {
+		if err := botSvc.StartKafkaConsumer(botSvc.ProcessKafkaMessage); err != nil {
+			log.Fatal().Err(err).Msg("Failed to start Kafka consumer")
+		}
+		log.Info().Msg("Kafka consumer started")
+	}
 	// ============================================================
 	// 6. ADMIN BOT
 	// ============================================================
