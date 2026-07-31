@@ -45,7 +45,7 @@ func runMigrations(db *sql.DB, log logger.Logger) {
 	CREATE TABLE IF NOT EXISTS bots (
 		id SERIAL PRIMARY KEY,
 		user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-		blocked INTEGER DEFAULT 0,
+		blocked BOOLEAN DEFAULT false,
 		session_file TEXT,
 		payment_status TEXT DEFAULT 'free',
 		created_at DATE DEFAULT CURRENT_TIMESTAMP
