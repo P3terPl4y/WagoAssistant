@@ -255,5 +255,6 @@ func (m *MultiProvider) callLocal(_ context.Context, prompt string) (string, err
 	if len(chatResp.Choices) == 0 || chatResp.Choices[0].Message.Content == "" {
 		return "", fmt.Errorf("no response from local server")
 	}
+	fmt.Println(chatResp.Choices[0].Message.Content)
 	return sanitizeResponse(chatResp.Choices[0].Message.Content), nil
 }
