@@ -1807,11 +1807,11 @@
                         list.appendChild(div);
                     });
                     if (!append) {
-                        pedidosOffset = offset + datalength;
+                        pedidosOffset = offset + data.length;
                     } else {
-                        pedidosOffset += datalength;
+                        pedidosOffset += data.length;
                     }
-                    if (datalength < limit) {
+                    if (data.length < limit) {
                         loadBtn.style.display = 'none';
                     } else {
                         loadBtn.style.display = 'inline-block';
