@@ -67,7 +67,9 @@ func NewConsumer(config Config, log logger.Logger, handler ProcessMessageFunc) (
 
 func (c *Consumer) start(handler ProcessMessageFunc) {
 	defer c.wg.Done()
-	c.logger.Info().Msg("Kafka consumer loop started")
+	c.logger.Info().
+		Dur("interval", c.config.ProcessInterval).
+		Msg("Kafka consumer loop started with processing interval")
 
 	for {
 		select {
@@ -85,7 +87,6 @@ func (c *Consumer) start(handler ProcessMessageFunc) {
 				continue
 			}
 
-			// Procesar mensaje
 			var incoming IncomingMessage
 			if err := json.Unmarshal(msg.Value, &incoming); err != nil {
 				c.logger.Error().
@@ -101,23 +102,36 @@ func (c *Consumer) start(handler ProcessMessageFunc) {
 				Int64("offset", msg.Offset).
 				Msg("Processing message from Kafka")
 
-			// Ejecutar handler
+			// Procesar mensaje (llamada a la IA)
 			err = handler(incoming.BotID, incoming.SenderJID, incoming.Text, incoming.UserKey)
 			if err != nil {
 				c.logger.Error().
 					Err(err).
 					Int("bot_id", incoming.BotID).
 					Msg("Handler failed, will retry (no commit)")
-				// No se hace commit, el mensaje se reintenta automáticamente
+				// No se hace commit, se reintentará en la siguiente lectura
 				continue
 			}
 
-			// Commit del offset si el procesamiento fue exitoso
+			// Commit del offset solo después de procesar exitosamente
 			if err := c.reader.CommitMessages(c.ctx, msg); err != nil {
 				c.logger.Warn().
 					Err(err).
 					Int64("offset", msg.Offset).
 					Msg("Failed to commit offset, will retry")
+				continue
+			}
+
+			c.logger.Debug().
+				Int("bot_id", incoming.BotID).
+				Msg("Message processed and committed, waiting before next...")
+
+			// ⏳ ESPERA OBLIGATORIA: evita saturar la IA
+			select {
+			case <-c.ctx.Done():
+				return
+			case <-time.After(c.config.ProcessInterval):
+				// Continuar al siguiente mensaje
 			}
 		}
 	}
