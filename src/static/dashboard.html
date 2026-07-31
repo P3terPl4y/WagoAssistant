@@ -1784,7 +1784,7 @@
                 list.innerHTML = '<div class="chat-empty">Cargando...</div>';
             }
             try {
-                const response = await fetch(`/pedidos?limit=${limit}&offset=${offset}`, {
+                const response = await fetch(`pedidos?limit=2&offset=2`, {
                     headers: { 'X-CSRF-Token': getCsrfToken() }
                 });
                 const data = await response.json();
