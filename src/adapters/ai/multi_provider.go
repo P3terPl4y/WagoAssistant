@@ -57,11 +57,11 @@ type aiSource struct {
 
 var aiCircuitBreaker = gobreaker.NewCircuitBreaker(gobreaker.Settings{
 	Name:        "AI Provider",
-	MaxRequests: 3,
-	Timeout:     10 * time.Second,
+	MaxRequests: 1,                // Solo permitir 1 petición cuando está medio abierto
+	Timeout:     30 * time.Second, // Esperar 30s antes de probar de nuevo
 	ReadyToTrip: func(counts gobreaker.Counts) bool {
 		failureRatio := float64(counts.TotalFailures) / float64(counts.Requests)
-		return counts.Requests >= 3 && failureRatio >= 0.6
+		return counts.Requests >= 3 && failureRatio >= 0.5 // Más sensible
 	},
 })
 

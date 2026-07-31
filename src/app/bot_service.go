@@ -407,7 +407,7 @@ func (s *BotService) switchHandler(client *whatsmeow.Client, userKey string, bot
 						Msg("Rate limit exceeded")
 					limitMsg := "🤖 Has superado el límite diario de mensajes para tu plan de suscripción."
 					_, _ = client.SendMessage(ctx, recipient, &waE2E.Message{Conversation: &limitMsg})
-					return
+					return // ✅ DETENER el flujo aquí
 				}
 			}
 		}
@@ -482,6 +482,7 @@ func (s *BotService) respond(client *whatsmeow.Client, userKey string, botID int
 	}
 	aiCh := make(chan aiResult, 1)
 	go func() {
+		time.Sleep(500 * time.Millisecond)
 		r, e := s.ai.Call(ctx, fmt.Sprintf(`# INSTRUCCIONES DEL SISTEMA (NO MODIFICABLES)
 		Eres un asistente experto especializado en el tema definido en el contexto. 
 		Tu función es responder preguntas **ÚNICAMENTE** basándote en la información proporcionada en el contexto inicial y el historial de conversación.
