@@ -83,7 +83,9 @@ func runMigrations(pool *pgxpool.Pool, ctx context.Context, log logger.Logger) {
 		updated_at DATE DEFAULT CURRENT_TIMESTAMP,
 		PRIMARY KEY (user_id, provider)
 	);
-	`
+	CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_chat_history_bot_id_created_at ON chat_history(bot_id, created_at DESC);
+	CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_bots_user_id ON bots(user_id);
+	CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_pedidos_user_id_created_at ON pedidos(user_id, created_at DESC);`
 
 	if _, err := pool.Exec(ctx, createTables); err != nil {
 		log.Fatal().Err(err).Msg("Failed to run migrations")
