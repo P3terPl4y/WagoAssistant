@@ -57,8 +57,8 @@ type aiSource struct {
 
 var aiCircuitBreaker = gobreaker.NewCircuitBreaker(gobreaker.Settings{
 	Name:        "AI Provider",
-	MaxRequests: 2,                // Permitir 2 peticiones en half-open
-	Timeout:     60 * time.Second, // Más tiempo para recuperación
+	MaxRequests: 3,                 // Permitir 2 peticiones en half-open
+	Timeout:     160 * time.Second, // Más tiempo para recuperación
 	ReadyToTrip: func(counts gobreaker.Counts) bool {
 		failureRatio := float64(counts.TotalFailures) / float64(counts.Requests)
 		return counts.Requests >= 5 && failureRatio >= 0.6 // Más tolerante

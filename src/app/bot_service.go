@@ -401,8 +401,17 @@ func (s *BotService) switchHandler(client *whatsmeow.Client, userKey string, bot
 			exceeded, usage, err := s.checkRateLimit(ctx, botID)
 			if err != nil {
 				s.logger.Error().Err(err).Msg("Rate limit check failed")
-			} else if exceeded && botID != s.AdminBotID {
-				s.logger.Warn().Int("usage", usage).Int("limit", usage).Msg("Rate limit exceeded (checked in respond)")
+			} else if exceeded {
+				// Obtener el límite real para el log
+				sub, _ := s.subs.Get(ctx, botID)
+				limit := 0
+				if sub != nil {
+					limit = sub.MsgLimit
+				}
+				s.logger.Warn().
+					Int("usage", usage).
+					Int("limit", limit).
+					Msg("Rate limit exceeded")
 				limitMsg := "🤖 Has superado el límite diario de mensajes para tu plan de suscripción."
 				_, _ = client.SendMessage(ctx, recipient, &waE2E.Message{Conversation: &limitMsg})
 				return
@@ -429,8 +438,16 @@ func (s *BotService) respond(client *whatsmeow.Client, userKey string, botID int
 		exceeded, usage, err := s.checkRateLimit(ctx, botID)
 		if err != nil {
 			s.logger.Error().Err(err).Msg("Rate limit check failed")
-		} else if exceeded && botID != s.AdminBotID {
-			s.logger.Warn().Int("usage", usage).Int("limit", usage).Msg("Rate limit exceeded (checked in respond)")
+		} else if exceeded {
+			sub, _ := s.subs.Get(ctx, botID)
+			limit := 0
+			if sub != nil {
+				limit = sub.MsgLimit
+			}
+			s.logger.Warn().
+				Int("usage", usage).
+				Int("limit", limit).
+				Msg("Rate limit exceeded")
 			limitMsg := "🤖 Has superado el límite diario de mensajes para tu plan de suscripción."
 			_, _ = client.SendMessage(ctx, recipient, &waE2E.Message{Conversation: &limitMsg})
 			return
@@ -1075,6 +1092,19 @@ func (s *BotService) checkRateLimit(ctx context.Context, botID int) (bool, int, 
 	usage, err := s.cache.GetUsage(ctx, botID)
 	if err != nil {
 		return false, 0, err
+	}
+	bot, err := s.bots.GetByID(ctx, botID)
+	if err != nil || bot == nil {
+		return false, 0, err
+	}
+
+	user, err := s.users.GetByID(ctx, bot.UserID)
+	if err != nil || user == nil {
+		return false, 0, err
+	}
+	if user.Role == "admin" {
+		// Los admins no tienen límite
+		return false, 0, nil
 	}
 	return usage > sub.MsgLimit && botID != s.AdminBotID, usage, nil
 }
