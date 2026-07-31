@@ -57,11 +57,14 @@ type aiSource struct {
 
 var aiCircuitBreaker = gobreaker.NewCircuitBreaker(gobreaker.Settings{
 	Name:        "AI Provider",
-	MaxRequests: 3,                 // Permitir 2 peticiones en half-open
-	Timeout:     160 * time.Second, // Más tiempo para recuperación
+	MaxRequests: 2,
+	Timeout:     120 * time.Second,
 	ReadyToTrip: func(counts gobreaker.Counts) bool {
+		// No abrir el circuito por errores 429 (rate limit) o por fallos de Legacy
+		// Solo contar fallos que NO sean de rate limit (429)
+		// Para simplificar, usamos un umbral alto y consideramos que 429 no es fallo grave
 		failureRatio := float64(counts.TotalFailures) / float64(counts.Requests)
-		return counts.Requests >= 5 && failureRatio >= 0.6 // Más tolerante
+		return counts.Requests >= 5 && failureRatio >= 0.8
 	},
 })
 
