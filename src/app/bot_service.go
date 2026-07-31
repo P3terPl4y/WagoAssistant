@@ -1081,10 +1081,29 @@ func (s *BotService) StartKafkaConsumer(handler kafka.ProcessMessageFunc) error 
 }
 
 // checkRateLimit verifica si el bot ha excedido su límite sin modificar el contador.
+// checkRateLimit verifica si el bot ha excedido su límite sin modificar el contador.
+// Los bots de usuarios admin NO tienen límite.
 func (s *BotService) checkRateLimit(ctx context.Context, botID int) (bool, int, error) {
 	if s.cache == nil || !s.cache.Available() {
 		return false, 0, nil
 	}
+
+	// 1. Obtener el bot y verificar si el dueño es admin
+	bot, err := s.bots.GetByID(ctx, botID)
+	if err != nil || bot == nil {
+		return false, 0, err
+	}
+	user, err := s.users.GetByID(ctx, bot.UserID)
+	if err != nil || user == nil {
+		return false, 0, err
+	}
+
+	// 🔥 IMPORTANTE: los admins NO tienen límite
+	if user.Role == "admin" {
+		return false, 0, nil
+	}
+
+	// 2. Para usuarios normales, verificar el límite
 	sub, err := s.subs.Get(ctx, botID)
 	if err != nil || sub == nil || sub.MsgLimit == -1 {
 		return false, 0, err
@@ -1093,18 +1112,5 @@ func (s *BotService) checkRateLimit(ctx context.Context, botID int) (bool, int, 
 	if err != nil {
 		return false, 0, err
 	}
-	bot, err := s.bots.GetByID(ctx, botID)
-	if err != nil || bot == nil {
-		return false, 0, err
-	}
-
-	user, err := s.users.GetByID(ctx, bot.UserID)
-	if err != nil || user == nil {
-		return false, 0, err
-	}
-	if user.Role == "admin" {
-		// Los admins no tienen límite
-		return false, 0, nil
-	}
-	return usage > sub.MsgLimit && botID != s.AdminBotID, usage, nil
+	return usage > sub.MsgLimit, usage, nil
 }
