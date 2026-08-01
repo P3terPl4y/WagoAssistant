@@ -19,7 +19,7 @@ type Config struct {
 	KafkaBrokers       []string `env:"KAFKA_BROKERS" envSeparator:","`
 	KafkaTopicIncoming string   `env:"KAFKA_TOPIC_INCOMING" envDefault:"whatsapp-incoming"`
 	KafkaConsumerGroup string   `env:"KAFKA_CONSUMER_GROUP" envDefault:"wago-group"`
-	KafkaWorkers       int      `env:"KAFKA_WORKERS" envDefault:"5"`
+	KafkaWorkers       int      `env:"KAFKA_WORKERS" envDefault:"1"`
 	KafkaRateLimit     float64  `env:"KAFKA_RATE_LIMIT" envDefault:"0.5"`
 }
 
@@ -27,7 +27,7 @@ func LoadKafkaConfig() Config {
 	enabled, _ := strconv.ParseBool(os.Getenv("KAFKA_ENABLED"))
 	workers, _ := strconv.Atoi(os.Getenv("KAFKA_WORKERS"))
 	if workers <= 0 {
-		workers = 5
+		workers = 1
 	}
 	rateLimit, _ := strconv.ParseFloat(os.Getenv("KAFKA_RATE_LIMIT"), 64)
 	if rateLimit <= 0 {
