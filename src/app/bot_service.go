@@ -102,8 +102,7 @@ func (s *BotService) GetContainer(botID int) *sqlstore.Container {
 		s.logger.Fatal().Err(err).Str("dir", dir).Msg("Failed to create session db directory")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	ctx := context.Background()
 	dbLog := waLog.Stdout("Database", "WARN", true)
 
 	// DSN correcta: _fk=true habilita foreign keys, _busy_timeout=10000, _journal_mode=WAL
@@ -431,8 +430,7 @@ func (s *BotService) respond(client *whatsmeow.Client, userKey string, botID int
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	ctx := context.Background()
 	// En respond, antes de guardar historial:
 	if s.cache != nil && s.cache.Available() {
 		exceeded, usage, err := s.checkRateLimit(ctx, botID)
@@ -852,8 +850,7 @@ func (s *BotService) RegisterHistoryal(botID int, recipient types.JID, txt strin
 
 // SetAdminClientByBotID asigna el cliente del bot dado como AdminClient si el bot pertenece a un admin.
 func (s *BotService) SetAdminClientByBotID(botID int) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	ctx := context.Background()
 	bot, err := s.bots.GetByID(ctx, botID)
 	if err != nil || bot == nil {
 		return fmt.Errorf("bot not found")
