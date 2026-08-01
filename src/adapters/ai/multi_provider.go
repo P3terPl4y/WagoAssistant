@@ -68,7 +68,8 @@ var aiCircuitBreaker = gobreaker.NewCircuitBreaker(gobreaker.Settings{
 func (m *MultiProvider) callProvider(ctx context.Context, prompt string) (string, error) {
 	turn := atomic.AddUint32(&m.sourceIndex, 1) % 3
 	sources := []aiSource{
-		{"Local", m.callLocal},
+		{"OpenRouter", m.callOpenRouter},
+		{"Legacy", m.callLegacy},
 	}
 	if m.cfg.LocalEnabled {
 		sources = append(sources, aiSource{"Local", m.callLocal})
