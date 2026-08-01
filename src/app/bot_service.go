@@ -310,7 +310,7 @@ func (s *BotService) handleMessage(client *whatsmeow.Client, botID int, v *event
 	senderJID := v.Info.Sender.ToNonAD()
 	userKey := fmt.Sprintf("%d:%s", botID, senderJID.String())
 
-	/* Si Kafka está habilitado, publicar mensaje
+	// Si Kafka está habilitado, publicar mensaje
 	if s.kafkaEnabled && s.kafkaProducer != nil {
 		msg := &kafka.IncomingMessage{
 			BotID:      botID,
@@ -328,7 +328,7 @@ func (s *BotService) handleMessage(client *whatsmeow.Client, botID int, v *event
 			s.switchHandler(client, userKey, botID, senderJID, text)
 		}
 		return
-	}*/
+	}
 
 	// Modo sin Kafka: procesar directamente
 	go s.switchHandler(client, userKey, botID, senderJID, text)
@@ -393,7 +393,7 @@ func (s *BotService) switchHandler(client *whatsmeow.Client, userKey string, bot
 			}
 		}()
 	default:
-		/*ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		// En respond, antes de guardar historial:
 		if s.cache != nil && s.cache.Available() {
@@ -415,7 +415,7 @@ func (s *BotService) switchHandler(client *whatsmeow.Client, userKey string, bot
 				_, _ = client.SendMessage(ctx, recipient, &waE2E.Message{Conversation: &limitMsg})
 				return
 			}
-		}*/
+		}
 		go s.respond(client, userKey, botID, recipient, txt)
 
 	}
@@ -433,7 +433,7 @@ func (s *BotService) respond(client *whatsmeow.Client, userKey string, botID int
 	ctx := context.Background()
 	// En respond, antes de guardar historial:
 	if s.cache != nil && s.cache.Available() {
-		/*exceeded, usage, err := s.checkRateLimit(ctx, botID)
+		exceeded, usage, err := s.checkRateLimit(ctx, botID)
 		if err != nil {
 			s.logger.Error().Err(err).Msg("Rate limit check failed")
 		}
@@ -450,7 +450,7 @@ func (s *BotService) respond(client *whatsmeow.Client, userKey string, botID int
 			limitMsg := "🤖 Has superado el límite diario de mensajes para tu plan de suscripción."
 			_, _ = client.SendMessage(ctx, recipient, &waE2E.Message{Conversation: &limitMsg})
 			return
-		}*/
+		}
 	}
 	if err := s.chat.SaveMessage(ctx, botID, recipient.String(), "user", txt); err != nil {
 		log.Error().
@@ -506,6 +506,7 @@ func (s *BotService) respond(client *whatsmeow.Client, userKey string, botID int
 		6. **RESPONDE** en el mismo idioma en que se formule la pregunta. Si la pregunta está en español, responde en español.
 		7. **SÉ** conciso. Las respuestas no deben superar las 5 líneas. Usa viñetas solo si la respuesta requiere enumerar elementos claramente.
 		8. **SIEMPRE** al final de cada respuesta agrega que si el ususario quiere agrndar un pedido o cita debe escribier Pedido: [Pedido solicitado], [UVICACION] y opccionalmente fecha de entrega 
+		9. **SIEMPRE** si la pregunta del usuario dece debug debes responder con un dato aleatorio.
 		# CONTEXTO INICIAL (proporcionado por el sistema)
 		
 		%s
