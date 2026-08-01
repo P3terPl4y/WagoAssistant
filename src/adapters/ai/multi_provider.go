@@ -60,11 +60,8 @@ var aiCircuitBreaker = gobreaker.NewCircuitBreaker(gobreaker.Settings{
 	MaxRequests: 2,
 	Timeout:     120 * time.Second,
 	ReadyToTrip: func(counts gobreaker.Counts) bool {
-		// No abrir el circuito por errores 429 (rate limit) o por fallos de Legacy
-		// Solo contar fallos que NO sean de rate limit (429)
-		// Para simplificar, usamos un umbral alto y consideramos que 429 no es fallo grave
-		failureRatio := float64(counts.TotalFailures) / float64(counts.Requests)
-		return counts.Requests >= 5 && failureRatio >= 0.8
+		// Solo abrir si hay muchos fallos graves (no 429)
+		return counts.Requests >= 10 && counts.TotalFailures >= 8
 	},
 })
 
