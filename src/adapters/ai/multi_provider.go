@@ -34,7 +34,6 @@ func sanitizeResponse(text string) string {
 	return text
 }
 
-// MultiProvider implements ports.AIService with automatic failover across providers.
 type MultiProvider struct {
 	cfg         config.AIConfig
 	logger      logger.Logger
@@ -101,7 +100,6 @@ func (m *MultiProvider) Call(ctx context.Context, prompt string) (string, error)
 }
 
 // --- OpenRouter ---
-
 func (m *MultiProvider) callOpenRouter(ctx context.Context, prompt string) (string, error) {
 	var lastErr error
 	for i := 0; i < len(m.cfg.FreeModels); i++ {
