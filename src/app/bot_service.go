@@ -508,16 +508,16 @@ func (s *BotService) respond(client *whatsmeow.Client, userKey string, botID int
 		8. **SIEMPRE** al final de cada respuesta agrega que si el ususario quiere agrndar un pedido o cita debe escribier Pedido: [Pedido solicitado], [UVICACION] y opccionalmente fecha de entrega 
 		9. **SIEMPRE** si la pregunta del usuario dece debug debes responder con un dato aleatorio.
 		# CONTEXTO INICIAL (proporcionado por el sistema)
-		
+		[CONTEXTO PARA EL ASISTENTE (TU)]
 		%s
 		# HISTORIAL DE CONVERSACIÓN (proporcionado por el sistema)
-		
+		[HISTORIAL DE CHAT]
 		%s
 		# PREGUNTA DEL USUARIO (proporcionada por el usuario)
-		
+		[PREGUNTA DEL USUARIO]
 		%s
 		# FORMATO DE RESPUESTA ESPERADO
-		- Respuesta directa y útil, basada en el contexto.
+		- Respuesta directa amable, acogedora, familiar y útil, basada en el contexto.
 		- Si no hay información, indicarlo claramente.
 		- Sin introducciones tipo "Según el contexto...", "Como se indica en...". Ve al grano.
 		- Sin despedidas elaboradas, agradecimientos o preguntas adicionales (a menos que sea necesario para aclarar la pregunta del usuario).`,
