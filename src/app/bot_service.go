@@ -311,7 +311,7 @@ func (s *BotService) handleMessage(client *whatsmeow.Client, botID int, v *event
 	senderJID := v.Info.Sender.ToNonAD()
 	userKey := fmt.Sprintf("%d:%s", botID, senderJID.String())
 
-	// Si Kafka está habilitado, publicar mensaje
+	/* Si Kafka está habilitado, publicar mensaje
 	if s.kafkaEnabled && s.kafkaProducer != nil {
 		msg := &kafka.IncomingMessage{
 			BotID:      botID,
@@ -329,7 +329,7 @@ func (s *BotService) handleMessage(client *whatsmeow.Client, botID int, v *event
 			s.switchHandler(client, userKey, botID, senderJID, text)
 		}
 		return
-	}
+	}*/
 
 	// Modo sin Kafka: procesar directamente
 	go s.switchHandler(client, userKey, botID, senderJID, text)
