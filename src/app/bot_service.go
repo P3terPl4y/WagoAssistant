@@ -364,22 +364,8 @@ func (s *BotService) switchHandler(client *whatsmeow.Client, userKey string, bot
 			}
 		}()
 	default:
-		ctx := context.Background()
-		if s.cache != nil && s.cache.Available() {
-			sub, err := s.subs.Get(ctx, botID)
-			if err == nil && sub != nil && sub.MsgLimit != -1 {
-				usage, err := s.cache.IncrementUsage(ctx, botID)
-				if err == nil && usage > sub.MsgLimit && botID != s.AdminBotID {
-					s.logger.Warn().Int("usage", usage).Int("limit", sub.MsgLimit).Msg("Rate limit exceeded")
-					limitMsg := "🤖 Has superado el límite diario de mensajes para tu plan de suscripción."
-					_, _ = client.SendMessage(ctx, recipient, &waE2E.Message{Conversation: &limitMsg})
-					return
-				}
-			}
 
-		} else {
-			go s.respond(client, userKey, botID, recipient, txt)
-		}
+		go s.respond(client, userKey, botID, recipient, txt)
 	}
 }
 
