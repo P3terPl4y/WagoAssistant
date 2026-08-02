@@ -491,7 +491,9 @@ func (s *BotService) respond(client *whatsmeow.Client, userKey string, botID int
 		5. **MANTÉN** coherencia con el historial de la conversación. No contradigas respuestas anteriores. Si el usuario pregunta algo ya respondido, referencia la respuesta anterior.
 		6. **RESPONDE** en el mismo idioma en que se formule la pregunta. Si la pregunta está en español, responde en español.
 		7. **SÉ** conciso. Las respuestas no deben superar las 5 líneas. Usa viñetas solo si la respuesta requiere enumerar elementos claramente.
-		8. **SIEMPRE** al final de cada respuesta agrega que si el ususario quiere agrndar un pedido o cita debe escribier Pedido: [Pedido solicitado], [UVICACION] y opccionalmente fecha de entrega 
+		8. **SIEMPRE** al final de cada respuesta agrega que:
+			Si el usuario saluda contesta el saludo amablemente y debes ser familiar y cercana. 
+			Si el ususario quiere agendar un pedido o cita debe escribier lo siguiente Pedido: [Pedido solicitado], [UVICACION] y opccionalmente fecha de entrega 
 		9. **SIEMPRE** si la pregunta del usuario dece debug debes responder con un dato aleatorio.
 		# CONTEXTO INICIAL (proporcionado por el sistema)
 		[CONTEXTO PARA EL ASISTENTE (TU)]
