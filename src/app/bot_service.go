@@ -432,26 +432,7 @@ func (s *BotService) respond(client *whatsmeow.Client, userKey string, botID int
 
 	ctx := context.Background()
 	// En respond, antes de guardar historial:
-	if s.cache != nil && s.cache.Available() {
-		exceeded, usage, err := s.checkRateLimit(ctx, botID)
-		if err != nil {
-			s.logger.Error().Err(err).Msg("Rate limit check failed")
-		}
-		if exceeded {
-			sub, _ := s.subs.Get(ctx, botID)
-			limit := 0
-			if sub != nil {
-				limit = sub.MsgLimit
-			}
-			s.logger.Warn().
-				Int("usage", usage).
-				Int("limit", limit).
-				Msg("Rate limit exceeded")
-			limitMsg := "🤖 Has superado el límite diario de mensajes para tu plan de suscripción."
-			_, _ = client.SendMessage(ctx, recipient, &waE2E.Message{Conversation: &limitMsg})
-			return
-		}
-	}
+
 	if err := s.chat.SaveMessage(ctx, botID, recipient.String(), "user", txt); err != nil {
 		log.Error().
 			Err(err).
