@@ -224,6 +224,11 @@ type chatResponse struct {
 
 func (m *MultiProvider) callLocal(_ context.Context, prompt string) (string, error) {
 	// Obtener la URL de Ollama (desde config o variable de entorno)
+	// ----- LOG DEL PROMPT -----
+	m.logger.Debug().
+		Str("prompt", prompt).
+		Msg("📤 Enviando prompt a Ollama")
+		// --------------------------
 	url := m.cfg.LocalURL
 	if url == "" {
 		url = os.Getenv("LOCAL_AI_URL")
