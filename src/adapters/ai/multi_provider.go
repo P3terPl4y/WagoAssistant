@@ -72,9 +72,7 @@ func (m *MultiProvider) callProvider(ctx context.Context, prompt string) (string
 		{"OpenRouter", m.callOpenRouter},
 		{"Legacy", m.callLegacy},
 	}
-	if m.cfg.LocalEnabled {
-		sources = append(sources, aiSource{"Local", m.callLocal})
-	}
+
 	for i := 0; i < len(sources); i++ {
 		idx := (int(turn) + i) % len(sources)
 		s := sources[idx]
