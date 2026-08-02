@@ -6,7 +6,8 @@ import (
 	"App/src/adapters/kafka"
 	"App/src/adapters/notifications"
 	adapterRedis "App/src/adapters/redis"
- "App/src/worker"
+	"App/src/worker"
+
 	//"App/src/adapters/sqlite"
 	"App/src/adapters/postgre"
 	"App/src/app"
@@ -102,43 +103,45 @@ func main() {
 		}
 		log.Info().Msg("Kafka consumer started")
 	}
- // ============================================================
-    //  WORKER: MONITOREO Y REINICIO DE IA LOCAL
-    // ============================================================
-    // Solo si LOCAL_AI_ENABLED es true y se ha configurado el binario
-    if os.Getenv("LOCAL_AI_ENABLED") == "true" {
-        aiCfg := worker.AIHealthConfig{
-            BinPath:       os.Getenv("AI_BIN_PATH"),
-            ModelPath:     os.Getenv("AI_MODEL_PATH"),
-            ListenAddr:    os.Getenv("AI_LISTEN_ADDR"),
-            HealthURL:     os.Getenv("AI_HEALTH_URL"),
-            CheckInterval: 5 * time.Minute, // cada 5 min (configurable)
-            RestartHour:   3,               // 3 AM
-            ExtraArgs:     []string{"-threads", "2", "-batch-size", "64", "-ctx-size", "2048"},
-        }
+	// ============================================================
+	//  WORKER: MONITOREO Y REINICIO DE IA LOCAL
+	// ============================================================
+	// Solo si LOCAL_AI_ENABLED es true y se ha configurado el binario
+	var healthWorker *worker.AIHealthWorker
+	var aiCfg worker.AIHealthConfig
+	if os.Getenv("LOCAL_AI_ENABLED") == "true" {
+		aiCfg = worker.AIHealthConfig{
+			BinPath:       os.Getenv("AI_BIN_PATH"),
+			ModelPath:     os.Getenv("AI_MODEL_PATH"),
+			ListenAddr:    os.Getenv("AI_LISTEN_ADDR"),
+			HealthURL:     os.Getenv("AI_HEALTH_URL"),
+			CheckInterval: 5 * time.Minute, // cada 5 min (configurable)
+			RestartHour:   3,               // 3 AM
+			ExtraArgs:     []string{"-threads", "2", "-batch-size", "64", "-ctx-size", "2048"},
+		}
 
-        // Si no hay valores por defecto, usar defaults
-        if aiCfg.BinPath == "" {
-            aiCfg.BinPath = "/var/www/lucifer/pia/go-pherence/llmserver"
-        }
-        if aiCfg.ModelPath == "" {
-            aiCfg.ModelPath = "/var/www/lucifer/pia/go-pherence/models/qwen2.5-0.5b.Q4_K_M.gguf"
-        }
-        if aiCfg.ListenAddr == "" {
-            aiCfg.ListenAddr = ":8080"
-        }
-        if aiCfg.HealthURL == "" {
-            aiCfg.HealthURL = "http://localhost:8080/health"
-        }
+		// Si no hay valores por defecto, usar defaults
+		if aiCfg.BinPath == "" {
+			aiCfg.BinPath = "/var/www/lucifer/pia/go-pherence/llmserver"
+		}
+		if aiCfg.ModelPath == "" {
+			aiCfg.ModelPath = "/var/www/lucifer/pia/go-pherence/models/qwen2.5-0.5b.Q4_K_M.gguf"
+		}
+		if aiCfg.ListenAddr == "" {
+			aiCfg.ListenAddr = ":8080"
+		}
+		if aiCfg.HealthURL == "" {
+			aiCfg.HealthURL = "http://localhost:8080/health"
+		}
 
-        healthWorker := worker.NewAIHealthWorker(aiCfg, log)
-        healthWorker.Start(context.Background())
-        defer healthWorker.Stop()
+		healthWorker = worker.NewAIHealthWorker(aiCfg, log)
+		healthWorker.Start(context.Background())
+		defer healthWorker.Stop()
 
-        log.Info().Msg("AI Health Worker iniciado (monitoreo y reinicio automático)")
-    } else {
-        log.Info().Msg("AI Health Worker deshabilitado (LOCAL_AI_ENABLED=false)")
-    }
+		log.Info().Msg("AI Health Worker iniciado (monitoreo y reinicio automático)")
+	} else {
+		log.Info().Msg("AI Health Worker deshabilitado (LOCAL_AI_ENABLED=false)")
+	}
 	// ============================================================
 	// 7. OAUTH CONFIG
 	// ============================================================
@@ -190,7 +193,7 @@ func main() {
 	// ============================================================
 	authH := handlers.NewAuthHandler(userSvc, log)
 	botH := handlers.NewBotHandler(botSvc, userSvc, botRepo, promptRepo, promptCache, botMgr, log, cfg.MaxBots, gNotifier)
-	adminH := handlers.NewAdminHandler(userSvc, botSvc, userRepo, botRepo, promptRepo, botMgr, db, redisCache, log, cfg.MaxBots, gNotifier)
+	adminH := handlers.NewAdminHandler(userSvc, botSvc, userRepo, botRepo, promptRepo, botMgr, db, redisCache, log, cfg.MaxBots, gNotifier, healthWorker)
 	dashH := handlers.NewDashboardHandler(userSvc, botRepo, promptRepo, subRepo, redisCache, log)
 	googleH := handlers.NewGoogleHandler(oauthCfg, userRepo, oauthRepo, log)
 	paymentH := handlers.NewPaymentHandler(subRepo, botRepo, log)

@@ -2,10 +2,10 @@ package worker
 
 import (
 	"context"
-	
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"time"
 
 	"App/src/pkg/logger"
@@ -13,13 +13,28 @@ import (
 
 // Configuración del worker
 type AIHealthConfig struct {
-	BinPath       string        // Ruta al binario llmserver
-	ModelPath     string        // Ruta al modelo
-	ListenAddr    string        // Ej: ":8080"
-	HealthURL     string        // URL para health check (ej: http://localhost:8080/health)
-	CheckInterval time.Duration // Cada cuánto verificar salud
-	RestartHour   int           // Hora del día para reinicio preventivo (0-23)
-	ExtraArgs     []string      // Argumentos extra (ej: -threads 2 -batch-size 64)
+	BinPath       string
+	ModelPath     string
+	ListenAddr    string
+	HealthURL     string
+	CheckInterval time.Duration
+	RestartHour   int
+	ExtraArgs     []string
+}
+
+// Estado de la IA (compartido)
+type AIHealthStatus struct {
+	mu           sync.RWMutex
+	IsHealthy    bool          `json:"is_healthy"`
+	LastCheck    time.Time     `json:"last_check"`
+	LastRestart  time.Time     `json:"last_restart"`
+	RestartCount int           `json:"restart_count"`
+	Uptime       time.Duration `json:"uptime"`
+	LastError    string        `json:"last_error,omitempty"`
+	PID          int           `json:"pid"`
+	ModelPath    string        `json:"model_path"`
+	BinPath      string        `json:"bin_path"`
+	StartedAt    time.Time     `json:"started_at"`
 }
 
 // AIHealthWorker gestiona el monitoreo y reinicio del servicio local de IA.
@@ -27,6 +42,7 @@ type AIHealthWorker struct {
 	cfg    AIHealthConfig
 	logger logger.Logger
 	stopCh chan struct{}
+	status *AIHealthStatus
 }
 
 // NewAIHealthWorker crea un nuevo worker.
@@ -35,7 +51,19 @@ func NewAIHealthWorker(cfg AIHealthConfig, log logger.Logger) *AIHealthWorker {
 		cfg:    cfg,
 		logger: log.WithComponent("ai_health_worker"),
 		stopCh: make(chan struct{}),
+		status: &AIHealthStatus{
+			ModelPath: cfg.ModelPath,
+			BinPath:   cfg.BinPath,
+			StartedAt: time.Now(),
+		},
 	}
+}
+
+// GetStatus devuelve una copia del estado actual (segura para concurrencia).
+func (w *AIHealthWorker) GetStatus() AIHealthStatus {
+	w.status.mu.RLock()
+	defer w.status.mu.RUnlock()
+	return *w.status
 }
 
 // Start inicia el worker en una goroutine.
@@ -55,14 +83,11 @@ func (w *AIHealthWorker) run(ctx context.Context) {
 		Int("restart_hour", w.cfg.RestartHour).
 		Msg("AI Health Worker iniciado")
 
-	// Primera ejecución inmediata para asegurar que la IA está funcionando
 	w.checkAndRestart()
 
-	// Temporizador para health checks periódicos
 	ticker := time.NewTicker(w.cfg.CheckInterval)
 	defer ticker.Stop()
 
-	// Temporizador para reinicio programado (cada 24h)
 	restartTicker := w.getDailyRestartTicker()
 	defer restartTicker.Stop()
 
@@ -78,7 +103,6 @@ func (w *AIHealthWorker) run(ctx context.Context) {
 			w.checkAndRestart()
 		case <-restartTicker.C:
 			w.restartAI("reinicio programado (24h)")
-			// Reiniciar el ticker para el próximo día
 			restartTicker.Stop()
 			restartTicker = w.getDailyRestartTicker()
 			defer restartTicker.Stop()
@@ -88,28 +112,34 @@ func (w *AIHealthWorker) run(ctx context.Context) {
 
 // checkAndRestart verifica la salud y reinicia si falla.
 func (w *AIHealthWorker) checkAndRestart() {
-	if w.isAIHealthy() {
-		w.logger.Debug().Msg("Health check OK")
-		return
+	healthy := w.isAIHealthy()
+
+	w.status.mu.Lock()
+	w.status.IsHealthy = healthy
+	w.status.LastCheck = time.Now()
+	if !healthy {
+		w.status.LastError = "Health check failed"
+	} else {
+		w.status.LastError = ""
 	}
-	w.logger.Warn().Msg("Health check falló, reiniciando IA local...")
-	w.restartAI("health check fallido")
+	w.status.mu.Unlock()
+
+	if !healthy {
+		w.restartAI("health check fallido")
+	}
 }
 
 // isAIHealthy comprueba el endpoint /health de la IA local.
 func (w *AIHealthWorker) isAIHealthy() bool {
-	// Si no hay URL configurada, asumir que no hay IA local que monitorear
 	if w.cfg.HealthURL == "" {
 		return true
 	}
-	// Usar curl para hacer la petición (más fiable en entornos con restricciones de red)
 	cmd := exec.Command("curl", "-s", "--max-time", "3", w.cfg.HealthURL)
 	output, err := cmd.Output()
 	if err != nil {
 		w.logger.Error().Err(err).Msg("Health check request falló")
 		return false
 	}
-	// Buscar "status":"ok" o "ok" en la respuesta
 	return strings.Contains(string(output), "ok") || strings.Contains(string(output), `"status":"ok"`)
 }
 
@@ -117,41 +147,49 @@ func (w *AIHealthWorker) isAIHealthy() bool {
 func (w *AIHealthWorker) restartAI(reason string) {
 	w.logger.Info().Str("reason", reason).Msg("Reiniciando IA local...")
 
-	// 1. Matar cualquier proceso llmserver existente
+	// Matar cualquier proceso previo
 	killCmd := exec.Command("pkill", "-f", "llmserver")
 	if err := killCmd.Run(); err != nil {
-		w.logger.Warn().Err(err).Msg("pkill no encontró proceso o falló (puede que no estuviera corriendo)")
+		w.logger.Warn().Err(err).Msg("pkill no encontró proceso o falló")
 	}
 
-	// 2. Construir comando de inicio
+	// Construir comando de inicio
 	args := []string{
 		"-model", w.cfg.ModelPath,
 		"-listen", w.cfg.ListenAddr,
 	}
-	// Agregar argumentos extra
 	if len(w.cfg.ExtraArgs) > 0 {
 		args = append(args, w.cfg.ExtraArgs...)
 	}
 	cmd := exec.Command(w.cfg.BinPath, args...)
-	cmd.Dir = "/var/www/lucifer/pia/go-pherence" // o el directorio adecuado
+	cmd.Dir = "/var/www/lucifer/pia/go-pherence"
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	// Ejecutar en segundo plano (sin esperar)
 	if err := cmd.Start(); err != nil {
 		w.logger.Error().Err(err).Msg("Fallo al iniciar el servidor de IA local")
 		return
 	}
+
+	// Actualizar estado con el nuevo PID
+	w.status.mu.Lock()
+	w.status.LastRestart = time.Now()
+	w.status.RestartCount++
+	w.status.PID = cmd.Process.Pid
+	w.status.StartedAt = time.Now()
+	w.status.IsHealthy = true
+	w.status.LastError = ""
+	w.status.mu.Unlock()
+
 	w.logger.Info().
 		Int("pid", cmd.Process.Pid).
 		Str("bin", w.cfg.BinPath).
 		Msg("Servidor de IA local reiniciado exitosamente")
 }
 
-// getDailyRestartTicker devuelve un ticker que dispara a la hora especificada cada día.
+// getDailyRestartTicker devuelve un ticker para el reinicio programado.
 func (w *AIHealthWorker) getDailyRestartTicker() *time.Ticker {
 	now := time.Now()
-	// Calcular la próxima ocurrencia de la hora configurada
 	next := time.Date(now.Year(), now.Month(), now.Day(), w.cfg.RestartHour, 0, 0, 0, now.Location())
 	if now.After(next) {
 		next = next.Add(24 * time.Hour)
@@ -161,6 +199,6 @@ func (w *AIHealthWorker) getDailyRestartTicker() *time.Ticker {
 	w.logger.Info().
 		Time("next_restart", next).
 		Dur("wait", wait).
-		Msg("Programado reinicio preventivo para las 3 AM")
+		Msg("Programado reinicio preventivo")
 	return ticker
 }

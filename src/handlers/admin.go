@@ -6,6 +6,7 @@ import (
 	"App/src/pkg/concurrency"
 	"App/src/pkg/logger"
 	"App/src/ports"
+	"App/src/worker"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -17,21 +18,22 @@ import (
 
 // AdminHandler handles admin-only HTTP endpoints.
 type AdminHandler struct {
-	userSvc    *app.UserService
-	botSvc     *app.BotService
-	userRepo   ports.UserRepository
-	botRepo    ports.BotRepository
-	promptRepo ports.PromptRepository
-	botMgr     *concurrency.BotManager
-	db         *pgxpool.Pool
-	cache      ports.CacheService
-	logger     logger.Logger
-	maxBots    int
-	gNotifier  *notifications.GmailNotifier
+	userSvc      *app.UserService
+	botSvc       *app.BotService
+	userRepo     ports.UserRepository
+	botRepo      ports.BotRepository
+	promptRepo   ports.PromptRepository
+	botMgr       *concurrency.BotManager
+	db           *pgxpool.Pool
+	cache        ports.CacheService
+	logger       logger.Logger
+	maxBots      int
+	gNotifier    *notifications.GmailNotifier
+	healthWorker *worker.AIHealthWorker
 }
 
-func NewAdminHandler(userSvc *app.UserService, botSvc *app.BotService, userRepo ports.UserRepository, botRepo ports.BotRepository, promptRepo ports.PromptRepository, botMgr *concurrency.BotManager, db *pgxpool.Pool, cache ports.CacheService, log logger.Logger, maxBots int, gNotifier *notifications.GmailNotifier) *AdminHandler {
-	return &AdminHandler{userSvc: userSvc, botSvc: botSvc, userRepo: userRepo, botRepo: botRepo, promptRepo: promptRepo, botMgr: botMgr, db: db, cache: cache, logger: log.WithComponent("admin_handler"), maxBots: maxBots, gNotifier: gNotifier}
+func NewAdminHandler(userSvc *app.UserService, botSvc *app.BotService, userRepo ports.UserRepository, botRepo ports.BotRepository, promptRepo ports.PromptRepository, botMgr *concurrency.BotManager, db *pgxpool.Pool, cache ports.CacheService, log logger.Logger, maxBots int, gNotifier *notifications.GmailNotifier, healthWorker *worker.AIHealthWorker) *AdminHandler {
+	return &AdminHandler{userSvc: userSvc, botSvc: botSvc, userRepo: userRepo, botRepo: botRepo, promptRepo: promptRepo, botMgr: botMgr, db: db, cache: cache, logger: log.WithComponent("admin_handler"), maxBots: maxBots, gNotifier: gNotifier, healthWorker: healthWorker}
 }
 
 func (h *AdminHandler) ListUsers(c fiber.Ctx) error {
@@ -212,4 +214,13 @@ func (h *AdminHandler) GetMetrics(c fiber.Ctx) error {
 		"messages": messages,
 		"errors":   errors,
 	})
+}
+
+// GetAIHealthStatus devuelve el estado de la IA en JSON
+func (h *AdminHandler) GetAIHealthStatus(c fiber.Ctx) error {
+	if h.healthWorker == nil {
+		return c.Status(503).JSON(fiber.Map{"error": "AI Health Worker no está activo"})
+	}
+	status := h.healthWorker.GetStatus()
+	return c.JSON(status)
 }

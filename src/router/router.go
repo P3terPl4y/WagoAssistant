@@ -84,6 +84,7 @@ func Setup(
 	admin.Put("/users/:id/password", adminH.UpdateUserPassword)
 	admin.Delete("/users/:id", adminH.DeleteUser)
 	admin.Get("/metrics", adminH.GetMetrics)
+	admin.Get("/ai-health", adminH.GetAIHealthStatus)
 	// En Setup() o donde se definan las rutas
 	botGroup := app.Group("/bot", handlers.AuthRequired)
 	botGroup.Post("/pair-code", botH.StartPairingCode) // Nueva ruta
