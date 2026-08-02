@@ -11,7 +11,7 @@ import (
 	"App/src/pkg/logger"
 )
 
-// Configuración del worker
+// AIHealthConfig configuración del worker
 type AIHealthConfig struct {
 	BinPath       string
 	ModelPath     string
@@ -22,9 +22,8 @@ type AIHealthConfig struct {
 	ExtraArgs     []string
 }
 
-// Estado de la IA (compartido)
+// AIHealthStatus estado de la IA (sin mutex, solo datos)
 type AIHealthStatus struct {
-	mu           sync.RWMutex
 	IsHealthy    bool          `json:"is_healthy"`
 	LastCheck    time.Time     `json:"last_check"`
 	LastRestart  time.Time     `json:"last_restart"`
@@ -37,50 +36,59 @@ type AIHealthStatus struct {
 	StartedAt    time.Time     `json:"started_at"`
 }
 
-// AIHealthWorker gestiona el monitoreo y reinicio del servicio local de IA.
+// AIHealthWorker gestiona el monitoreo y reinicio
 type AIHealthWorker struct {
-	cfg    AIHealthConfig
-	logger logger.Logger
-	stopCh chan struct{}
-	status *AIHealthStatus
+	cfg      AIHealthConfig
+	logger   logger.Logger
+	stopCh   chan struct{}
+	status   AIHealthStatus
+	statusMu sync.RWMutex
+	isOllama bool // true si es Ollama
 }
 
-// NewAIHealthWorker crea un nuevo worker.
+// NewAIHealthWorker crea un nuevo worker
 func NewAIHealthWorker(cfg AIHealthConfig, log logger.Logger) *AIHealthWorker {
-	return &AIHealthWorker{
-		cfg:    cfg,
-		logger: log.WithComponent("ai_health_worker"),
-		stopCh: make(chan struct{}),
-		status: &AIHealthStatus{
+	// Detectar si es Ollama (BinPath vacío o contiene "ollama")
+	isOllama := strings.Contains(cfg.BinPath, "ollama") || cfg.BinPath == ""
+
+	w := &AIHealthWorker{
+		cfg:      cfg,
+		logger:   log.WithComponent("ai_health_worker"),
+		stopCh:   make(chan struct{}),
+		isOllama: isOllama,
+		status: AIHealthStatus{
 			ModelPath: cfg.ModelPath,
 			BinPath:   cfg.BinPath,
 			StartedAt: time.Now(),
 		},
 	}
+	return w
 }
 
-// GetStatus devuelve una copia del estado actual (segura para concurrencia).
+// GetStatus devuelve una copia del estado actual (seguro para concurrencia)
 func (w *AIHealthWorker) GetStatus() AIHealthStatus {
-	w.status.mu.RLock()
-	defer w.status.mu.RUnlock()
-	return *w.status
+	w.statusMu.RLock()
+	defer w.statusMu.RUnlock()
+	// Devolver una copia sin el mutex (que no existe en la estructura)
+	return w.status
 }
 
-// Start inicia el worker en una goroutine.
+// Start inicia el worker en goroutine
 func (w *AIHealthWorker) Start(ctx context.Context) {
 	go w.run(ctx)
 }
 
-// Stop detiene el worker.
+// Stop detiene el worker
 func (w *AIHealthWorker) Stop() {
 	close(w.stopCh)
 }
 
-// run es el bucle principal del worker.
+// run es el bucle principal
 func (w *AIHealthWorker) run(ctx context.Context) {
 	w.logger.Info().
 		Dur("check_interval", w.cfg.CheckInterval).
 		Int("restart_hour", w.cfg.RestartHour).
+		Bool("is_ollama", w.isOllama).
 		Msg("AI Health Worker iniciado")
 
 	w.checkAndRestart()
@@ -110,11 +118,11 @@ func (w *AIHealthWorker) run(ctx context.Context) {
 	}
 }
 
-// checkAndRestart verifica la salud y reinicia si falla.
+// checkAndRestart verifica salud y reinicia si falla
 func (w *AIHealthWorker) checkAndRestart() {
 	healthy := w.isAIHealthy()
 
-	w.status.mu.Lock()
+	w.statusMu.Lock()
 	w.status.IsHealthy = healthy
 	w.status.LastCheck = time.Now()
 	if !healthy {
@@ -122,14 +130,14 @@ func (w *AIHealthWorker) checkAndRestart() {
 	} else {
 		w.status.LastError = ""
 	}
-	w.status.mu.Unlock()
+	w.statusMu.Unlock()
 
 	if !healthy {
 		w.restartAI("health check fallido")
 	}
 }
 
-// isAIHealthy comprueba el endpoint /health de la IA local.
+// isAIHealthy comprueba el health del servidor de IA
 func (w *AIHealthWorker) isAIHealthy() bool {
 	if w.cfg.HealthURL == "" {
 		return true
@@ -140,20 +148,46 @@ func (w *AIHealthWorker) isAIHealthy() bool {
 		w.logger.Error().Err(err).Msg("Health check request falló")
 		return false
 	}
-	return strings.Contains(string(output), "ok") || strings.Contains(string(output), `"status":"ok"`)
+	// Para Ollama, busca "models" en la respuesta; para otros, busca "status":"ok"
+	return strings.Contains(string(output), `"models":`) || strings.Contains(string(output), `"status":"ok"`)
 }
 
-// restartAI ejecuta el reinicio del proceso de IA.
+// restartAI ejecuta el reinicio del proceso de IA
 func (w *AIHealthWorker) restartAI(reason string) {
 	w.logger.Info().Str("reason", reason).Msg("Reiniciando IA local...")
 
-	// Matar cualquier proceso previo
+	if w.isOllama {
+		// Modo Ollama: usar systemctl para reiniciar el servicio
+		cmd := exec.Command("systemctl", "restart", "ollama")
+		if err := cmd.Run(); err != nil {
+			w.logger.Error().Err(err).Msg("Fallo al reiniciar el servicio de Ollama")
+			w.statusMu.Lock()
+			w.status.LastError = "Failed to restart Ollama: " + err.Error()
+			w.statusMu.Unlock()
+			return
+		}
+		// Esperar a que el servicio esté listo
+		time.Sleep(3 * time.Second)
+
+		w.statusMu.Lock()
+		w.status.LastRestart = time.Now()
+		w.status.RestartCount++
+		w.status.PID = 0
+		w.status.StartedAt = time.Now()
+		w.status.IsHealthy = true
+		w.status.LastError = ""
+		w.statusMu.Unlock()
+
+		w.logger.Info().Msg("Servicio de Ollama reiniciado exitosamente")
+		return
+	}
+
+	// Modo tradicional (llmserver / llama-server)
 	killCmd := exec.Command("pkill", "-f", "llmserver")
 	if err := killCmd.Run(); err != nil {
 		w.logger.Warn().Err(err).Msg("pkill no encontró proceso o falló")
 	}
 
-	// Construir comando de inicio
 	args := []string{
 		"-model", w.cfg.ModelPath,
 		"-listen", w.cfg.ListenAddr,
@@ -171,23 +205,19 @@ func (w *AIHealthWorker) restartAI(reason string) {
 		return
 	}
 
-	// Actualizar estado con el nuevo PID
-	w.status.mu.Lock()
+	w.statusMu.Lock()
 	w.status.LastRestart = time.Now()
 	w.status.RestartCount++
 	w.status.PID = cmd.Process.Pid
 	w.status.StartedAt = time.Now()
 	w.status.IsHealthy = true
 	w.status.LastError = ""
-	w.status.mu.Unlock()
+	w.statusMu.Unlock()
 
-	w.logger.Info().
-		Int("pid", cmd.Process.Pid).
-		Str("bin", w.cfg.BinPath).
-		Msg("Servidor de IA local reiniciado exitosamente")
+	w.logger.Info().Int("pid", cmd.Process.Pid).Msg("Servidor de IA local reiniciado exitosamente")
 }
 
-// getDailyRestartTicker devuelve un ticker para el reinicio programado.
+// getDailyRestartTicker devuelve ticker para reinicio programado
 func (w *AIHealthWorker) getDailyRestartTicker() *time.Ticker {
 	now := time.Now()
 	next := time.Date(now.Year(), now.Month(), now.Day(), w.cfg.RestartHour, 0, 0, 0, now.Location())

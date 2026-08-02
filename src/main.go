@@ -111,25 +111,25 @@ func main() {
 	var aiCfg worker.AIHealthConfig
 	if os.Getenv("LOCAL_AI_ENABLED") == "true" {
 		aiCfg = worker.AIHealthConfig{
-			BinPath:       os.Getenv("AI_BIN_PATH"),
-			ModelPath:     os.Getenv("AI_MODEL_PATH"),
+			BinPath:       os.Getenv("AI_BIN_PATH"),   // Debe ser "ollama" o estar vacío
+			ModelPath:     os.Getenv("AI_MODEL_PATH"), // No se usa para Ollama
 			ListenAddr:    os.Getenv("AI_LISTEN_ADDR"),
 			HealthURL:     os.Getenv("AI_HEALTH_URL"),
-			CheckInterval: 5 * time.Minute, // cada 5 min (configurable)
-			RestartHour:   3,               // 3 AM
-			ExtraArgs:     []string{"-threads", "2", "-batch-size", "64", "-ctx-size", "2048"},
+			CheckInterval: 5 * time.Minute,
+			RestartHour:   3,
+			ExtraArgs:     []string{},
 		}
-
-		// Si no hay valores por defecto, usar defaults
+		// Si no se definieron variables, usar defaults para Ollama
 		if aiCfg.BinPath == "" {
-			aiCfg.BinPath = "/var/www/lucifer/pia/go-pherence/llmserver"
+			aiCfg.BinPath = "ollama"
 		}
-		if aiCfg.ModelPath == "" {
-			aiCfg.ModelPath = "/var/www/lucifer/pia/go-pherence/models/qwen2.5-0.5b.Q4_K_M.gguf"
+		if aiCfg.HealthURL == "" {
+			aiCfg.HealthURL = "http://localhost:11434/api/tags"
 		}
 		if aiCfg.ListenAddr == "" {
-			aiCfg.ListenAddr = ":8080"
+			aiCfg.ListenAddr = ":11434"
 		}
+
 		if aiCfg.HealthURL == "" {
 			aiCfg.HealthURL = "http://localhost:8080/health"
 		}
