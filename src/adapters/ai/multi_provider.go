@@ -7,7 +7,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
 	"sync/atomic"
@@ -221,8 +223,23 @@ type chatResponse struct {
 }
 
 func (m *MultiProvider) callLocal(_ context.Context, prompt string) (string, error) {
+	// Obtener la URL de Ollama (desde config o variable de entorno)
+	url := m.cfg.LocalURL
+	if url == "" {
+		url = os.Getenv("LOCAL_AI_URL")
+	}
+	if url == "" {
+		return "", fmt.Errorf("local AI URL not configured (set LOCAL_AI_URL)")
+	}
+
+	// Nombre del modelo (por defecto qwen3:0.6b, se puede sobreescribir con LOCAL_AI_MODEL)
+	modelName := os.Getenv("LOCAL_AI_MODEL")
+	if modelName == "" {
+		modelName = "qwen3:0.6b"
+	}
+
 	reqBody := chatRequest{
-		Model: "qwen3-0.6b",
+		Model: modelName,
 		Messages: []chatMessage{
 			{Role: "system", Content: "Eres un asistente de WhatsApp. Responde de forma concisa, clara y en el mismo idioma del usuario. No incluyas etiquetas, tokens ni marcadores internos en tu respuesta."},
 			{Role: "user", Content: prompt},
@@ -235,14 +252,16 @@ func (m *MultiProvider) callLocal(_ context.Context, prompt string) (string, err
 		return "", fmt.Errorf("marshal error: %v", err)
 	}
 
-	httpClient := &http.Client{Timeout: 20 * time.Second}
-	resp, err := httpClient.Post(m.cfg.LocalURL, "application/json", bytes.NewBuffer(jsonData))
+	httpClient := &http.Client{Timeout: 30 * time.Second} // Timeout más largo para Ollama
+	resp, err := httpClient.Post(url, "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return "", fmt.Errorf("local server error: %v", err)
 	}
 	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("local server returned status %d", resp.StatusCode)
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("local server returned status %d: %s", resp.StatusCode, string(body))
 	}
 
 	var chatResp chatResponse
@@ -252,6 +271,8 @@ func (m *MultiProvider) callLocal(_ context.Context, prompt string) (string, err
 	if len(chatResp.Choices) == 0 || chatResp.Choices[0].Message.Content == "" {
 		return "", fmt.Errorf("no response from local server")
 	}
-	fmt.Println(chatResp.Choices[0].Message.Content)
+
+	// Log de depuración (opcional)
+	// fmt.Println(chatResp.Choices[0].Message.Content)
 	return sanitizeResponse(chatResp.Choices[0].Message.Content), nil
 }

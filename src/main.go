@@ -130,10 +130,6 @@ func main() {
 			aiCfg.ListenAddr = ":11434"
 		}
 
-		if aiCfg.HealthURL == "" {
-			aiCfg.HealthURL = "http://localhost:8080/health"
-		}
-
 		healthWorker = worker.NewAIHealthWorker(aiCfg, log)
 		healthWorker.Start(context.Background())
 		defer healthWorker.Stop()
