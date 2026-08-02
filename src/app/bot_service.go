@@ -415,6 +415,7 @@ func (s *BotService) switchHandler(client *whatsmeow.Client, userKey string, bot
 				_, _ = client.SendMessage(ctx, recipient, &waE2E.Message{Conversation: &limitMsg})
 				return
 			} else if blocked {
+				s.logger.Info().Msg("Bot paused")
 				limitMsg := "🤖 Has superado el límite diario de mensajes para tu plan de suscripción."
 				_, _ = client.SendMessage(ctx, recipient, &waE2E.Message{Conversation: &limitMsg})
 				return
