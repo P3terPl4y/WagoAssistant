@@ -101,7 +101,7 @@ func Load() *Config {
 
 		CryptomusMerchantID: env("CRYPTOMUS_MERCHANT_ID", ""),
 		CryptomusAPIKey:     env("CRYPTOMUS_API_KEY", ""),
-		CryptomusWebhookURL: env("CRYPTOMUS_WEBHOOK_URL", "https://api.cryptomus.com/"),
+		CryptomusWebhookURL: env("CRYPTOMUS_WEBHOOK_URL", "https://wago.redcliente.cl/payment/webhook/"),
 	}
 
 	// Encryption key: default value baked in so .env is not required
