@@ -1,9 +1,17 @@
 package handlers
 
 import (
+	"App/src/config"
 	"App/src/domain"
 	"App/src/pkg/logger"
 	"App/src/ports"
+	"bytes"
+	"crypto/md5"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -14,17 +22,30 @@ type PaymentHandler struct {
 	subs   ports.SubscriptionRepository
 	bots   ports.BotRepository
 	logger logger.Logger
+	config *config.Config
 }
 
-func NewPaymentHandler(subs ports.SubscriptionRepository, bots ports.BotRepository, log logger.Logger) *PaymentHandler {
+func NewPaymentHandler(subs ports.SubscriptionRepository, bots ports.BotRepository, log logger.Logger, config *config.Config) *PaymentHandler {
 	return &PaymentHandler{
 		subs:   subs,
 		bots:   bots,
 		logger: log.WithComponent("payment_handler"),
+		config: config,
 	}
 }
 
-// Checkout generates a placeholder checkout session URL.
+// generateSignature genera la firma MD5 requerida por Cryptomus.
+// La firma es: md5(base64_encode(jsonBody) + API_KEY)
+func generateSignature(jsonBody []byte, apiKey string) string {
+	// Codificar el body en Base64
+	base64Body := base64.StdEncoding.EncodeToString(jsonBody)
+	// Concatenar con la API Key y calcular MD5
+	data := base64Body + apiKey
+	hash := md5.Sum([]byte(data))
+	return fmt.Sprintf("%x", hash)
+}
+
+// Checkout genera una factura en Cryptomus y devuelve la URL de pago.
 func (h *PaymentHandler) Checkout(c fiber.Ctx) error {
 	var req struct {
 		BotID int    `json:"bot_id"`
@@ -34,60 +55,179 @@ func (h *PaymentHandler) Checkout(c fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid request"})
 	}
 
-	// TODO: Replace with Stripe or PayPal SDK call to create a Checkout Session
-	// return stripe.Checkout.New(&stripe.CheckoutSessionParams{ ... })
+	// Define el precio según el tier
+	var amount string
+	switch req.Tier {
+	case "pro":
+		amount = "10.00"
+	case "enterprise":
+		amount = "30.00"
+	default:
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid tier"})
+	}
 
-	// Mock response
-	mockURL := "https://checkout.stripe.com/c/pay/cs_test_mock..."
+	// Genera un order_id único (alfanumérico, guiones y guiones bajos permitidos)
+	orderID := fmt.Sprintf("bot_%d_%d", req.BotID, time.Now().UnixNano())
+
+	// Prepara el payload para Cryptomus
+	payload := map[string]interface{}{
+		"amount":       amount,
+		"currency":     "USD",
+		"order_id":     orderID,
+		"url_callback": h.config.CryptomusWebhookURL,
+		"lifetime":     3600, // 1 hora para pagar
+	}
+
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		h.logger.Error().Err(err).Msg("Failed to marshal payment payload")
+		return c.Status(500).JSON(fiber.Map{"error": "Internal error"})
+	}
+
+	// Generar la firma correcta: md5(base64_encode(body) + API_KEY)
+	signature := generateSignature(jsonPayload, h.config.CryptomusAPIKey)
+
+	// Llama a la API de Cryptomus
+	url := "https://api.cryptomus.com/v1/payment"
+	httpReq, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonPayload))
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Internal error"})
+	}
+
+	// Headers correctos según documentación
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("userId", h.config.CryptomusMerchantID) // ¡userId, no merchant!
+	httpReq.Header.Set("sign", signature)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		h.logger.Error().Err(err).Msg("Cryptomus API request failed")
+		return c.Status(500).JSON(fiber.Map{"error": "Payment gateway unavailable"})
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Internal error"})
+	}
+
+	// Procesa la respuesta
+	var result map[string]interface{}
+	if err := json.Unmarshal(body, &result); err != nil {
+		h.logger.Error().Err(err).Msg("Failed to parse Cryptomus response")
+		return c.Status(500).JSON(fiber.Map{"error": "Invalid gateway response"})
+	}
+
+	// Verifica que la respuesta sea exitosa (state == 0)
+	if state, ok := result["state"].(float64); !ok || state != 0 {
+		errMsg := "Unknown error"
+		if msg, ok := result["message"].(string); ok {
+			errMsg = msg
+		}
+		h.logger.Error().Msgf("Cryptomus error: %s", errMsg)
+		return c.Status(400).JSON(fiber.Map{"error": errMsg})
+	}
+
+	// Extrae la URL de pago del campo "result.url"
+	resultData, ok := result["result"].(map[string]interface{})
+	if !ok {
+		return c.Status(500).JSON(fiber.Map{"error": "Unexpected gateway response"})
+	}
+	checkoutURL, ok := resultData["url"].(string)
+	if !ok {
+		return c.Status(500).JSON(fiber.Map{"error": "Missing payment URL"})
+	}
+
 	return c.JSON(fiber.Map{
-		"checkout_url": mockURL,
+		"checkout_url": checkoutURL,
+		"order_id":     orderID,
 		"tier":         req.Tier,
 		"status":       "pending",
 	})
 }
 
-// Webhook receives asynchronous payment confirmations from gateways.
+// Webhook recibe notificaciones de pago de Cryptomus.
 func (h *PaymentHandler) Webhook(c fiber.Ctx) error {
-	// TODO: Validate webhook signature using Stripe/PayPal secret
-	// sig := c.Get("Stripe-Signature")
-	// event, err := webhook.ConstructEvent(c.Body(), sig, endpointSecret)
-
-	// For demonstration, we'll parse a mock payload
-	var req struct {
-		BotID  int    `json:"bot_id"`
-		Tier   string `json:"tier"`
-		Status string `json:"status"` // e.g. "succeeded"
-	}
-	if err := c.Bind().JSON(&req); err != nil {
-		return c.Status(400).SendString("Bad Request")
+	// 1. Leer el cuerpo
+	body := c.Body()
+	if len(body) == 0 {
+		return c.Status(400).SendString("Empty body")
 	}
 
-	if req.Status != "succeeded" {
-		return c.SendStatus(200) // Ignore pending/failed events
-	}
-	
-	limit := 1000 // Pro limit
-	if req.Tier == "enterprise" {
-		limit = -1
+	// 2. Obtener la firma del header
+	sigHeader := c.Get("sign")
+	if sigHeader == "" {
+		h.logger.Warn().Msg("Webhook missing signature")
+		return c.Status(400).SendString("Missing signature")
 	}
 
+	// 3. Validar la firma (usando el mismo método que en Checkout)
+	expectedSignature := generateSignature(body, h.config.CryptomusAPIKey)
+	if sigHeader != expectedSignature {
+		h.logger.Warn().Msg("Webhook invalid signature")
+		return c.Status(401).SendString("Invalid signature")
+	}
+
+	// 4. Parsear el payload
+	var payload struct {
+		OrderID  string `json:"order_id"`
+		Status   string `json:"status"`
+		Amount   string `json:"amount"`
+		Currency string `json:"currency"`
+	}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		h.logger.Error().Err(err).Msg("Failed to parse webhook payload")
+		return c.Status(400).SendString("Bad payload")
+	}
+
+	// 5. Solo procesar si el pago fue exitoso
+	// Estados posibles: process, check, paid, paid_over, fail, wrong_amount, cancel, system_fail, refund_process, refund_fail, refund_paid
+	if payload.Status != "paid" && payload.Status != "paid_over" {
+		// paid_over significa que se pagó más de lo debido
+		return c.SendStatus(200)
+	}
+
+	// 6. Extraer bot_id y tier del order_id
+	// Formato: "bot_{botID}_{timestamp}"
+	var botID int
+	var tier string
+	n, err := fmt.Sscanf(payload.OrderID, "bot_%d_%s", &botID, &tier)
+	if err != nil || n != 2 {
+		h.logger.Error().Str("order_id", payload.OrderID).Msg("Invalid order_id format")
+		return c.Status(400).SendString("Invalid order_id")
+	}
+
+	// Determinar límite según tier
+	limit := 1000
+	if tier == "enterprise" {
+		limit = -1 // ilimitado
+	}
+
+	// 7. Guardar la suscripción
 	sub := &domain.Subscription{
-		BotID:     req.BotID,
-		Tier:      req.Tier,
+		BotID:     botID,
+		Tier:      tier,
 		MsgLimit:  limit,
-		ExpiresAt: time.Now().Add(30 * 24 * time.Hour), // 30 days
+		ExpiresAt: time.Now().Add(30 * 24 * time.Hour),
 	}
 
 	if err := h.subs.Save(c, sub); err != nil {
-		h.logger.Error().Err(err).Int("bot_id", req.BotID).Msg("Failed to update subscription via webhook")
-		return c.Status(500).SendString("Internal Error")
+		h.logger.Error().Err(err).Int("bot_id", botID).Msg("Failed to save subscription")
+		return c.Status(500).SendString("Internal error")
 	}
 
-	// Also update bots table to mark payment status
-	if err := h.bots.UpdatePaymentStatus(c, req.BotID, "paid"); err != nil {
+	// Actualizar estado de pago en la tabla bots
+	if err := h.bots.UpdatePaymentStatus(c, botID, "paid"); err != nil {
 		h.logger.Error().Err(err).Msg("Failed to update payment status")
 	}
 
-	h.logger.Info().Int("bot_id", req.BotID).Str("tier", req.Tier).Msg("Subscription upgraded via webhook")
+	h.logger.Info().
+		Int("bot_id", botID).
+		Str("tier", tier).
+		Str("order_id", payload.OrderID).
+		Str("status", payload.Status).
+		Msg("Subscription paid via Cryptomus webhook")
+
 	return c.SendStatus(200)
 }

@@ -41,6 +41,10 @@ type Config struct {
 	DedupWindow          time.Duration
 
 	CookieSecure bool
+
+	CryptomusMerchantID string `env:"CRYPTOMUS_MERCHANT_ID"`
+	CryptomusAPIKey     string `env:"CRYPTOMUS_API_KEY"`
+	CryptomusWebhookURL string `env:"CRYPTOMUS_WEBHOOK_URL"`
 }
 
 type AIConfig struct {
@@ -94,6 +98,10 @@ func Load() *Config {
 
 		// false by default → works on plain HTTP without issues
 		CookieSecure: os.Getenv("COOKIE_SECURE") == "true",
+
+		CryptomusMerchantID: env("CRYPTOMUS_MERCHANT_ID", ""),
+		CryptomusAPIKey:     env("CRYPTOMUS_API_KEY", ""),
+		CryptomusWebhookURL: env("CRYPTOMUS_WEBHOOK_URL", "https://api.cryptomus.com/"),
 	}
 
 	// Encryption key: default value baked in so .env is not required

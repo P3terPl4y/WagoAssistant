@@ -192,7 +192,7 @@ func main() {
 	adminH := handlers.NewAdminHandler(userSvc, botSvc, userRepo, botRepo, promptRepo, botMgr, db, redisCache, log, cfg.MaxBots, gNotifier, healthWorker)
 	dashH := handlers.NewDashboardHandler(userSvc, botRepo, promptRepo, subRepo, redisCache, log)
 	googleH := handlers.NewGoogleHandler(oauthCfg, userRepo, oauthRepo, log)
-	paymentH := handlers.NewPaymentHandler(subRepo, botRepo, log)
+	paymentH := handlers.NewPaymentHandler(subRepo, botRepo, log, cfg)
 
 	// ============================================================
 	// 10. ROUTING
