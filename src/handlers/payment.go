@@ -85,7 +85,12 @@ func (h *PaymentHandler) Checkout(c fiber.Ctx) error {
 	}
 
 	jsonPayload, _ := json.Marshal(payload)
-
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		h.logger.Error().Err(err).Msg("PayzCore request failed")
+		return c.Status(500).JSON(fiber.Map{"error": "Payment gateway unavailable"})
+	}
+	h.logger.Info().Str("payload", string(jsonPayload)).Msg("Sending to PayzCore")
 	// Llamada a la API
 	url := "https://api.payzcore.com/v1/payments"
 	httpReq, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonPayload))
@@ -101,6 +106,7 @@ func (h *PaymentHandler) Checkout(c fiber.Ctx) error {
 	defer resp.Body.Close()
 
 	body, _ := io.ReadAll(resp.Body)
+	h.logger.Info().Int("status", resp.StatusCode).Str("response", string(body)).Msg("PayzCore response")
 	var result map[string]interface{}
 	json.Unmarshal(body, &result)
 
