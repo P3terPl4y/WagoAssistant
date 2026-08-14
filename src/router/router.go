@@ -89,6 +89,6 @@ func Setup(
 	botGroup := app.Group("/bot", handlers.AuthRequired)
 	botGroup.Post("/pair-code", botH.StartPairingCode) // Nueva ruta
 	// ──── Payments ────
-	app.Post("/payments/checkout", handlers.AuthRequired, paymentH.Checkout)
+	app.Post("/payments/checkout", paymentH.Checkout)
 	app.Post("/payments/webhook", paymentH.Webhook)
 }
