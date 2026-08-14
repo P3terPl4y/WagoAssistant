@@ -143,6 +143,8 @@ func (h *PaymentHandler) Checkout(c fiber.Ctx) error {
 	})
 }
 func (h *PaymentHandler) Webhook(c fiber.Ctx) error {
+	h.logger.Warn().Msg("HOLAAAA")
+
 	body := c.Body()
 	if len(body) == 0 {
 		return c.Status(400).SendString("Empty body")
