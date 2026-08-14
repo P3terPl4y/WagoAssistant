@@ -57,7 +57,7 @@ func (h *PaymentHandler) Checkout(c fiber.Ctx) error {
 	}
 
 	// Precio según tier
-	var amount int64
+	var amount float64
 	switch req.Tier {
 	case "pro":
 		amount = 10.00
