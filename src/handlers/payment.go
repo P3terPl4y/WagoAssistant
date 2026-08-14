@@ -57,12 +57,12 @@ func (h *PaymentHandler) Checkout(c fiber.Ctx) error {
 	}
 
 	// Precio según tier
-	var amount string
+	var amount int64
 	switch req.Tier {
 	case "pro":
-		amount = "10.00"
+		amount = 10.00
 	case "enterprise":
-		amount = "30.00"
+		amount = 30.00
 	default:
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid tier"})
 	}
