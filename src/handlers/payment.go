@@ -56,7 +56,7 @@ func (h *PaymentHandler) Checkout(c fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid request"})
 	}
 
-	// Precio según tier
+	// Precio según tier (como float64)
 	var amount float64
 	switch req.Tier {
 	case "pro":
@@ -70,32 +70,31 @@ func (h *PaymentHandler) Checkout(c fiber.Ctx) error {
 	// ID único
 	orderID := fmt.Sprintf("bot_%d_%d", req.BotID, time.Now().UnixNano())
 
-	// Payload para PayzCore
+	// Payload IDÉNTICO al curl que funciona
 	payload := map[string]interface{}{
-		"amount":            amount,           // número, no string
-		"external_ref":      orderID,          // tu referencia única
-		"external_order_id": "ORD-" + orderID, // opcional, para idempotencia
-		"network":           "TRC20",
-		"token":             "USDT",
-		"expires_in":        3600, // opcional (default 3600)
-		"metadata": map[string]string{ // opcional
-			"bot_id": fmt.Sprintf("%d", req.BotID),
-			"tier":   req.Tier,
-		},
+		"amount":       fmt.Sprintf("%.2f", amount), // "10.00" como string
+		"external_ref": orderID,
+		"network":      "TRC20",
+		"token":        "USDT",
 	}
 
-	jsonPayload, _ := json.Marshal(payload)
+	// Marshal UNA SOLA VEZ
 	jsonPayload, err := json.Marshal(payload)
 	if err != nil {
-		h.logger.Error().Err(err).Msg("PayzCore request failed")
-		return c.Status(500).JSON(fiber.Map{"error": "Payment gateway unavailable"})
+		h.logger.Error().Err(err).Msg("Failed to marshal payload")
+		return c.Status(500).JSON(fiber.Map{"error": "Internal error"})
 	}
+
 	h.logger.Info().Str("payload", string(jsonPayload)).Msg("Sending to PayzCore")
+
 	// Llamada a la API
 	url := "https://api.payzcore.com/v1/payments"
-	httpReq, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonPayload))
+	httpReq, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonPayload))
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Internal error"})
+	}
 	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("x-api-key", h.config.PayzCore_Api_Key) // ¡Header correcto!
+	httpReq.Header.Set("x-api-key", h.config.PayzCore_Api_Key)
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(httpReq)
@@ -105,32 +104,44 @@ func (h *PaymentHandler) Checkout(c fiber.Ctx) error {
 	}
 	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
-	h.logger.Info().Int("status", resp.StatusCode).Str("response", string(body)).Msg("PayzCore response")
-	var result map[string]interface{}
-	json.Unmarshal(body, &result)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Internal error"})
+	}
 
-	// Verificar que state == 0 (éxito)
-	if state, ok := result["state"].(float64); !ok || state != 0 {
+	h.logger.Info().Int("status", resp.StatusCode).Str("response", string(body)).Msg("PayzCore response")
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(body, &result); err != nil {
+		h.logger.Error().Err(err).Msg("Failed to parse response")
+		return c.Status(500).JSON(fiber.Map{"error": "Invalid gateway response"})
+	}
+
+	// Verificar si la respuesta fue exitosa
+	// PayzCore devuelve "success": true en lugar de "state": 0
+	if success, ok := result["success"].(bool); !ok || !success {
 		errMsg := "Unknown error"
-		if msg, ok := result["message"].(string); ok {
+		if msg, ok := result["error"].(string); ok {
 			errMsg = msg
 		}
 		h.logger.Error().Msgf("PayzCore error: %s", errMsg)
 		return c.Status(400).JSON(fiber.Map{"error": errMsg})
 	}
 
-	// Extraer dirección y QR
-	resultData := result["result"].(map[string]interface{})
-	paymentData := resultData["payment"].(map[string]interface{})
-	address := paymentData["address"].(string)
-	qrCode := paymentData["qrCode"].(string) // puede ser base64 o URL
+	// Extraer datos de pago
+	paymentData, ok := result["payment"].(map[string]interface{})
+	if !ok {
+		return c.Status(500).JSON(fiber.Map{"error": "Unexpected response format"})
+	}
 
-	// (Opcional) Guarda la orden en tu BD con estado "pending"
+	address, _ := paymentData["address"].(string)
+	qrCode, _ := paymentData["qr_code"].(string) // PayzCore devuelve "qr_code"
+	paymentURL, _ := paymentData["payment_url"].(string)
 
 	return c.JSON(fiber.Map{
 		"checkout_address": address,
 		"qr_code":          qrCode,
+		"payment_url":      paymentURL,
 		"order_id":         orderID,
 		"tier":             req.Tier,
 		"status":           "pending",
