@@ -72,7 +72,7 @@ func (h *PaymentHandler) Checkout(c fiber.Ctx) error {
 
 	// Payload IDÉNTICO al curl que funciona
 	payload := map[string]interface{}{
-		"amount":       fmt.Sprintf("%.2f", amount), // "10.00" como string
+		"amount":       amount, // "10.00" como string
 		"external_ref": orderID,
 		"network":      "TRC20",
 		"token":        "USDT",
