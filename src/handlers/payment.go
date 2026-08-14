@@ -72,11 +72,16 @@ func (h *PaymentHandler) Checkout(c fiber.Ctx) error {
 
 	// Payload para PayzCore
 	payload := map[string]interface{}{
-		"amount":      amount,
-		"network":     "TRC20",
-		"externalRef": orderID,
-		"webhookUrl":  h.config.PayzCore_Webhook_Url,
-		"lifetime":    3600,
+		"amount":            amount,           // número, no string
+		"external_ref":      orderID,          // tu referencia única
+		"external_order_id": "ORD-" + orderID, // opcional, para idempotencia
+		"network":           "TRC20",
+		"token":             "USDT",
+		"expires_in":        3600, // opcional (default 3600)
+		"metadata": map[string]string{ // opcional
+			"bot_id": fmt.Sprintf("%d", req.BotID),
+			"tier":   req.Tier,
+		},
 	}
 
 	jsonPayload, _ := json.Marshal(payload)
