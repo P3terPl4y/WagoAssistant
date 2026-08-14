@@ -2,16 +2,19 @@ package handlers
 
 import (
 	"App/src/config"
-	"App/src/domain"
 	"App/src/pkg/logger"
 	"App/src/ports"
 	"bytes"
+	"crypto/hmac"
 	"crypto/md5"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -44,7 +47,142 @@ func generateSignature(jsonBody []byte, apiKey string) string {
 	hash := md5.Sum([]byte(data))
 	return fmt.Sprintf("%x", hash)
 }
+func (h *PaymentHandler) Checkout(c fiber.Ctx) error {
+	var req struct {
+		BotID int    `json:"bot_id"`
+		Tier  string `json:"tier"`
+	}
+	if err := c.Bind().JSON(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid request"})
+	}
 
+	// Precio según tier
+	var amount string
+	switch req.Tier {
+	case "pro":
+		amount = "10.00"
+	case "enterprise":
+		amount = "30.00"
+	default:
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid tier"})
+	}
+
+	// ID único para referenciar este pago
+	orderID := fmt.Sprintf("bot_%d_%d", req.BotID, time.Now().UnixNano())
+
+	// Payload para PayzCore
+	payload := map[string]interface{}{
+		"amount":      amount,
+		"network":     "TRC20",                       // Tron, la más usada
+		"externalRef": orderID,                       // Tu referencia única
+		"webhookUrl":  h.config.PayzCore_Webhook_Url, // Tu endpoint /webhook
+		"lifetime":    3600,                          // 1 hora para pagar
+	}
+
+	jsonPayload, _ := json.Marshal(payload)
+
+	// Crear la petición a PayzCore
+	url := "https://api.payzcore.com/v1/payments"
+	httpReq, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonPayload))
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("x-api-key", h.config.PayzCore_Api_Key) // <-- ¡AQUÍ LA CLAVE!
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Payment gateway unavailable"})
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	var result map[string]interface{}
+	json.Unmarshal(body, &result)
+
+	// Verificar respuesta exitosa (state == 0)
+	if state, ok := result["state"].(float64); !ok || state != 0 {
+		errMsg := "Unknown error"
+		if msg, ok := result["message"].(string); ok {
+			errMsg = msg
+		}
+		return c.Status(400).JSON(fiber.Map{"error": errMsg})
+	}
+
+	// Extraer la dirección de pago y el QR
+	resultData := result["result"].(map[string]interface{})
+	paymentData := resultData["payment"].(map[string]interface{})
+	address := paymentData["address"].(string) // Dirección donde el cliente debe pagar
+	qrCode := paymentData["qrCode"].(string)   // QR en base64 (opcional)
+
+	// Guardar en tu BD: asociar orderID con botID y tier, estado "pending"
+
+	return c.JSON(fiber.Map{
+		"checkout_address": address,
+		"qr_code":          qrCode,
+		"order_id":         orderID,
+		"tier":             req.Tier,
+		"status":           "pending",
+		"instructions":     "Envía el monto exacto en USDT (TRC-20) a esta dirección.",
+	})
+}
+func (h *PaymentHandler) Webhook(c fiber.Ctx) error {
+	// 1. Leer el cuerpo
+	body := c.Body()
+	if len(body) == 0 {
+		return c.Status(400).SendString("Empty body")
+	}
+
+	// 2. Obtener la firma y el timestamp del header
+	signature := c.Get("x-payzcore-signature")
+	timestamp := c.Get("x-payzcore-timestamp")
+	if signature == "" || timestamp == "" {
+		return c.Status(400).SendString("Missing signature or timestamp")
+	}
+
+	// 3. Verificar que el timestamp no sea muy antiguo (replay protection, 5 min)
+	ts, _ := strconv.ParseInt(timestamp, 10, 64)
+	if time.Now().Unix()-ts > 300 {
+		return c.Status(401).SendString("Webhook too old")
+	}
+
+	// 4. Construir el mensaje a firmar: timestamp + "." + body
+	message := fmt.Sprintf("%s.%s", timestamp, string(body))
+
+	// 5. Calcular la firma esperada con HMAC-SHA256 usando el Webhook Secret
+	mac := hmac.New(sha256.New, []byte(h.config.PayzCore_Webhook_Secret))
+	mac.Write([]byte(message))
+	expectedSignature := hex.EncodeToString(mac.Sum(nil))
+
+	// 6. Comparar firmas (en tiempo constante para evitar timing attacks)
+	if !hmac.Equal([]byte(signature), []byte(expectedSignature)) {
+		h.logger.Warn().Msg("Webhook invalid signature")
+		return c.Status(401).SendString("Invalid signature")
+	}
+
+	// 7. Si la firma es válida, procesar el pago
+	var payload struct {
+		ExternalRef string `json:"externalRef"`
+		Status      string `json:"status"`
+		Amount      string `json:"amount"`
+		TxID        string `json:"txId"`
+	}
+	json.Unmarshal(body, &payload)
+
+	if payload.Status == "paid" {
+		// Extraer botID y tier del externalRef
+		// (usas el mismo formato que generaste en Checkout)
+		var botID int
+		var tier string
+		fmt.Sscanf(payload.ExternalRef, "bot_%d_%s", &botID, &tier)
+
+		// Guardar la suscripción en tu BD
+		// ...
+		h.logger.Info().Str("order", payload.ExternalRef).Msg("Payment confirmed")
+	}
+
+	return c.SendStatus(200)
+}
+
+/* CODIGO FUNCIONAL
 // Checkout genera una factura en Cryptomus y devuelve la URL de pago.
 func (h *PaymentHandler) Checkout(c fiber.Ctx) error {
 	var req struct {
@@ -146,7 +284,7 @@ func (h *PaymentHandler) Checkout(c fiber.Ctx) error {
 		"status":       "pending",
 	})
 }
-
+*
 // Webhook recibe notificaciones de pago de Cryptomus.
 func (h *PaymentHandler) Webhook(c fiber.Ctx) error {
 	// 1. Leer el cuerpo
@@ -231,3 +369,4 @@ func (h *PaymentHandler) Webhook(c fiber.Ctx) error {
 
 	return c.SendStatus(200)
 }
+*/

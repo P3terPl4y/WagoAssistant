@@ -42,9 +42,13 @@ type Config struct {
 
 	CookieSecure bool
 
-	CryptomusMerchantID string `env:"CRYPTOMUS_MERCHANT_ID"`
-	CryptomusAPIKey     string `env:"CRYPTOMUS_API_KEY"`
-	CryptomusWebhookURL string `env:"CRYPTOMUS_WEBHOOK_URL"`
+	CryptomusMerchantID     string `env:"CRYPTOMUS_MERCHANT_ID"`
+	CryptomusAPIKey         string `env:"CRYPTOMUS_API_KEY"`
+	CryptomusWebhookURL     string `env:"CRYPTOMUS_WEBHOOK_URL"`
+	PayzCore_Api_Key        string
+	PayzCore_Api_Secret     string
+	PayzCore_Webhook_Secret string
+	PayzCore_Webhook_Url    string
 }
 
 type AIConfig struct {
@@ -75,9 +79,9 @@ func Load() *Config {
 		GoogleRedirectURL:  os.Getenv("GOOGLE_REDIRECT_URL"),
 
 		AI: AIConfig{
-			OpenRouterKey: env("OPENROUTER_API_KEY", ""),
+			OpenRouterKey: env("OPENROUTER_API_Key", ""),
 			OpenRouterURL: env("OPENROUTER_URL", "https://openrouter.ai/api/v1/chat/completions"),
-			LegacyKey:     env("LEGACY_API_KEY", ""),
+			LegacyKey:     env("LEGACY_API_Key", ""),
 			LegacyURL:     env("LEGACY_URL", "https://apifreellm.com/api/v1/chat"),
 			LocalURL:      env("LOCAL_AI_URL", "http://localhost:8080/v1/chat/completions"),
 			LocalEnabled:  os.Getenv("LOCAL_AI_ENABLED") == "true",
@@ -99,24 +103,28 @@ func Load() *Config {
 		// false by default → works on plain HTTP without issues
 		CookieSecure: os.Getenv("COOKIE_SECURE") == "true",
 
-		CryptomusMerchantID: env("CRYPTOMUS_MERCHANT_ID", ""),
-		CryptomusAPIKey:     env("CRYPTOMUS_API_KEY", ""),
-		CryptomusWebhookURL: env("CRYPTOMUS_WEBHOOK_URL", "https://wago.redcliente.cl/payment/webhook/"),
+		CryptomusMerchantID:     env("CRYPTOMUS_MERCHANT_ID", ""),
+		CryptomusAPIKey:         env("CRYPTOMUS_API_Key", ""),
+		CryptomusWebhookURL:     env("CRYPTOMUS_WEBHOOK_URL", "https://wago.redcliente.cl/payment/webhook/"),
+		PayzCore_Api_Key:        env("PAYZCORE_API_KEY", ""),
+		PayzCore_Api_Secret:     env("PAYZCORE_API_SECRET", ""),
+		PayzCore_Webhook_Secret: env("PAYZCORE_WEBHOOK_SECRET", ""),
+		PayzCore_Webhook_Url:    env("PAYZCORE_WEBHOOK_URL", "https://wago.redcliente.cl/payment/webhook/"),
 	}
 
-	// Encryption key: default value baked in so .env is not required
-	keyHex := env("ENCRYPTION_KEY", "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
-	key, err := hex.DecodeString(keyHex)
-	if err != nil || len(key) != 32 {
-		panic("ENCRYPTION_KEY must be a 64-char hex string (32 bytes)")
+	// Encryption Key: default value baked in so .env is not required
+	KeyHex := env("ENCRYPTION_Key", "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+	Key, err := hex.DecodeString(KeyHex)
+	if err != nil || len(Key) != 32 {
+		panic("ENCRYPTION_Key must be a 64-char hex string (32 bytes)")
 	}
-	cfg.EncryptionKey = key
+	cfg.EncryptionKey = Key
 
 	return cfg
 }
 
-func env(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
+func env(Key, fallback string) string {
+	if v := os.Getenv(Key); v != "" {
 		return v
 	}
 	return fallback
