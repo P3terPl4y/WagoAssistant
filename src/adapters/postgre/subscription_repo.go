@@ -21,7 +21,7 @@ func (r *SubscriptionRepo) Get(ctx context.Context, ID int) (*domain.Subscriptio
 	var sub domain.Subscription
 	sub.ID = ID
 	err := r.db.QueryRow(ctx,
-		`SELECT tier, msg_limit, expires_at FROM subscriptions WHERE bot_id = $1`, ID).
+		`SELECT tier, msg_limit, expires_at FROM subscriptions WHERE id = $1`, ID).
 		Scan(&sub.Tier, &sub.MsgLimit, &sub.ExpiresAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -31,8 +31,8 @@ func (r *SubscriptionRepo) Get(ctx context.Context, ID int) (*domain.Subscriptio
 
 func (r *SubscriptionRepo) Save(ctx context.Context, sub *domain.Subscription) error {
 	_, err := r.db.Exec(ctx,
-		`INSERT INTO subscriptions (bot_id, tier, msg_limit, expires_at) VALUES ($1, $2, $3, $4)
-		 ON CONFLICT (bot_id) DO UPDATE SET tier = $5, msg_limit = $6, expires_at = $7`,
+		`INSERT INTO subscriptions (id, tier, msg_limit, expires_at) VALUES ($1, $2, $3, $4)
+		 ON CONFLICT (id) DO UPDATE SET tier = $5, msg_limit = $6, expires_at = $7`,
 		sub.ID, sub.Tier, sub.MsgLimit, sub.ExpiresAt,
 		sub.Tier, sub.MsgLimit, sub.ExpiresAt)
 	return err
