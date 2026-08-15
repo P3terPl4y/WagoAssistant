@@ -187,7 +187,7 @@ func main() {
 	// ============================================================
 	// 9. HANDLERS
 	// ============================================================
-	authH := handlers.NewAuthHandler(userSvc, log)
+	authH := handlers.NewAuthHandler(userRepo, userSvc, log)
 	botH := handlers.NewBotHandler(botSvc, userSvc, botRepo, promptRepo, promptCache, botMgr, log, cfg.MaxBots, gNotifier)
 	adminH := handlers.NewAdminHandler(userSvc, botSvc, userRepo, botRepo, promptRepo, botMgr, db, redisCache, log, cfg.MaxBots, gNotifier, healthWorker)
 	dashH := handlers.NewDashboardHandler(userSvc, botRepo, promptRepo, subRepo, redisCache, log)

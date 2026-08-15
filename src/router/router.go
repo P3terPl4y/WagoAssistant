@@ -62,6 +62,8 @@ func Setup(
 	app.Put("/user/email", handlers.AuthRequired, authH.UpdateEmail)
 	app.Put("/user/phone", handlers.AuthRequired, authH.UpdatePhone)
 	app.Get("/bot/:id/status", handlers.AuthRequired)
+	app.Get("/bot/:id/prompt", handlers.AuthRequired, botH.GetPrompt)
+	app.Get("/user/:id/phone", handlers.AuthRequired, authH.GetPhone)
 
 	// ──── Dashboard ────
 	app.Get("/dashboard", handlers.AuthRequired, dashH.Render)

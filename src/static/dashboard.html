@@ -1321,7 +1321,7 @@
                     .catch(() => { });
             }
             if (window.userID) {
-                fetch(`/user/phone`, { headers: { 'X-CSRF-Token': getCsrfToken() } })
+                fetch(`/user/${window.userID}/phone`, { headers: { 'X-CSRF-Token': getCsrfToken() } })
                     .then(res => res.json())
                     .then(data => { if (data.phone) document.getElementById('phoneText').value = data.phone; })
                     .catch(() => { });
@@ -1350,7 +1350,7 @@
                 badge.textContent = 'Conectado';
                 badge.className = 'status-badge active';
                 btn.style.display = 'block';
-                btn.innerHTML = `<i class="fas fa-check-circle"></i> <span class="btn-text">Conectado</span>`;
+                btn.innerHTML = `<i class="fas fa-check-circle"></i> <span class="btn-text">Conectado</span>${window.botID}`;
                 btn.disabled = true;
                 qrBox.style.display = 'none';
                 document.getElementById('pairingContainer').style.display = 'none';

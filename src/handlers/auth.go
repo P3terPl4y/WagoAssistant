@@ -3,7 +3,9 @@ package handlers
 import (
 	"App/src/app"
 	"App/src/pkg/logger"
+	"App/src/ports"
 	"encoding/json"
+	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -12,12 +14,13 @@ import (
 
 // AuthHandler handles authentication-related HTTP endpoints.
 type AuthHandler struct {
-	userSvc *app.UserService
-	logger  logger.Logger
+	userRepo ports.UserRepository
+	userSvc  *app.UserService
+	logger   logger.Logger
 }
 
-func NewAuthHandler(userSvc *app.UserService, log logger.Logger) *AuthHandler {
-	return &AuthHandler{userSvc: userSvc, logger: log.WithComponent("auth_handler")}
+func NewAuthHandler(userRepo ports.UserRepository, userSvc *app.UserService, log logger.Logger) *AuthHandler {
+	return &AuthHandler{userRepo: userRepo, userSvc: userSvc, logger: log.WithComponent("auth_handler")}
 }
 
 func (h *AuthHandler) Login(c fiber.Ctx) error {
@@ -121,4 +124,15 @@ func (h *AuthHandler) UpdatePhone(c fiber.Ctx) error {
 // LogFailedLogin is a utility for logging failed login attempts.
 func LogFailedLogin(log logger.Logger, ip, reason string) {
 	log.Warn().Str("ip", ip).Str("reason", reason).Str("time", time.Now().Format(time.RFC3339)).Msg("Failed login attempt")
+}
+func (h *AuthHandler) GetPhone(c fiber.Ctx) error {
+	userID, err := strconv.Atoi(c.Params("id"))
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Pago pendiente"})
+	}
+	promtp, err := h.userRepo.GetPhoneByID(c, userID)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Pago pendiente"})
+	}
+	return c.SendString(*promtp)
 }

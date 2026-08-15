@@ -50,7 +50,16 @@ func (r *UserRepo) GetByEmail(ctx context.Context, email string) (*domain.User, 
 	}
 	return &u, err
 }
-
+func (r *UserRepo) GetPhoneByID(ctx context.Context, id int) (*string, error) {
+	var u domain.User
+	err := r.db.QueryRow(ctx,
+		`SELECT id,phone FROM users WHERE id = $1`, id).
+		Scan(&u.ID, &u.Phone)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	return &u.Phone, err
+}
 func (r *UserRepo) Create(ctx context.Context, username, email, phone, passwordHash string) (*domain.User, error) {
 	var id int
 	err := r.db.QueryRow(ctx,

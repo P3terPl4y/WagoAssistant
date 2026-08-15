@@ -261,3 +261,15 @@ func (h *BotHandler) StartPairingCode(c fiber.Ctx) error {
 		return c.Status(408).JSON(fiber.Map{"error": "Tiempo de espera agotado"})
 	}
 }
+func (h *BotHandler) GetPrompt(c fiber.Ctx) error {
+	botID, err := strconv.Atoi(c.Params("id"))
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Pago pendiente"})
+	}
+	promtp, err := h.promptRepo.Get(c, botID)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Pago pendiente"})
+	}
+	return c.SendString(promtp)
+}
+
