@@ -130,9 +130,9 @@ func (h *AuthHandler) GetPhone(c fiber.Ctx) error {
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Pago pendiente"})
 	}
-	promtp, err := h.userRepo.GetPhoneByID(c, userID)
+	phone, err := h.userRepo.GetPhoneByID(c, userID)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Pago pendiente"})
 	}
-	return c.SendString(*promtp)
+	return c.SendString(*phone)
 }
