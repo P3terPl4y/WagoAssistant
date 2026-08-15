@@ -776,6 +776,35 @@
             cursor: pointer;
             font-weight: 500;
         }
+        .modal {
+    position: fixed;
+    z-index: 10000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.modal-content {
+    background: var(--color-bg-card);
+    padding: 2rem;
+    border-radius: var(--radius-md);
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 0.5rem 2rem rgba(0,0,0,0.3);
+    position: relative;
+}
+.modal .close {
+    position: absolute;
+    top: 1rem;
+    right: 1.5rem;
+    font-size: 1.8rem;
+    cursor: pointer;
+    color: var(--color-text-muted);
+}
     </style>
 </head>
 
@@ -1975,37 +2004,31 @@
         console.log('📱 Modo móvil:', detectMobile());
         console.log('📂 Sidebar abierto:', sidebarOpen);
         // Capturar el clic en el botón "Upgrade"
-document.getElementById('upgradeBtn').addEventListener('click', async function () {
-    const tier = 'pro'; // o 'enterprise' según selección del usuario
-
-    try {
-        const res = await fetch('/payments/checkout', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-Token': getCsrfToken()
-            },
-            body: JSON.stringify({
-                bot_id: window.botID,
-                tier: tier
-            })
-        });
-
-        const data = await res.json();
-
-        if (res.ok) {
-            // Mostrar el QR y la dirección en un modal
-            showPaymentModal(data);
-        } else {
-            Toast.show(data.error || 'Error al generar el pago', 'error');
+// ============================================================
+//  UPGRADE (igual)
+// ============================================================
+const upgradeBtn = document.getElementById('upgradeBtn');
+if (upgradeBtn) {
+    upgradeBtn.addEventListener('click', async () => {
+        try {
+            const res = await fetch('/payments/checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+                body: JSON.stringify({ bot_id: window.botID, tier: 'pro' })
+            });
+            const data = await res.json();
+            if (res.ok && data.checkout_url) {
+                window.location.href = data.checkout_url;
+            } else {
+                Toast.show(data.error || "Error al iniciar pago", "error");
+            }
+        } catch (err) {
+            Toast.show("Error de red", "error");
         }
-    } catch (err) {
-        Toast.show('Error de red', 'error');
-    }
-});
+    });
+}
 
 function showPaymentModal(data) {
-    // Crear o mostrar un modal con la info de pago
     const modal = document.getElementById('paymentModal');
     const addressEl = document.getElementById('paymentAddress');
     const qrEl = document.getElementById('paymentQR');
@@ -2015,7 +2038,6 @@ function showPaymentModal(data) {
     qrEl.src = data.qr_code; // data:image/png;base64,...
     instructionsEl.textContent = data.instructions || 'Envía el monto exacto en USDT (TRC-20) a esta dirección.';
 
-    // Opcional: mostrar la URL de pago de PayzCore (payment_url) como enlace
     const urlLink = document.getElementById('paymentUrl');
     if (data.payment_url) {
         urlLink.href = data.payment_url;
