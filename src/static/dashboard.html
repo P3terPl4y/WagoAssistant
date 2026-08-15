@@ -935,11 +935,30 @@
                                 <i class="fas fa-crown"></i>
                                 <span class="btn-text">Hacer Upgrade</span>
                             </button>
+                            <div id="upgradeBtnContainer"
+                                style="flex:1; display:flex; flex-direction:column; gap:0.5rem;">
+                                <button class="btn btn-secondary plan-btn" data-tier="basico"
+                                    style="width:100%; border-color: var(--color-primary); color: var(--color-primary);">
+                                    <i class="fas fa-crown"></i> Básico – 2 USDT
+                                </button>
+                                <button class="btn btn-secondary plan-btn" data-tier="enterprise"
+                                    style="width:100%; border-color: var(--color-primary); color: var(--color-primary);">
+                                    <i class="fas fa-crown"></i> Enterprise – 10 USDT
+                                </button>
+                                <button class="btn btn-secondary plan-btn" data-tier="premium"
+                                    style="width:100%; border-color: var(--color-primary); color: var(--color-primary);">
+                                    <i class="fas fa-crown"></i> Premium – 25 USDT
+                                </button>
+                            </div>
+
+                            <!-- Modal de pago (existente) -->
                             <div id="paymentModal" class="modal" style="display:none;">
                                 <div class="modal-content">
                                     <span class="close"
                                         onclick="document.getElementById('paymentModal').style.display='none'">&times;</span>
                                     <h3>Paga con USDT</h3>
+                                    <p><strong>Plan:</strong> <span id="paymentPlan"></span></p>
+                                    <p><strong>Monto:</strong> <span id="paymentAmount"></span> USDT</p>
                                     <p><strong>Dirección:</strong> <span id="paymentAddress"></span></p>
                                     <img id="paymentQR" src="" alt="QR de pago" style="max-width:200px;" />
                                     <p id="paymentInstructions"></p>
@@ -1986,41 +2005,59 @@
         console.log('✅ Dashboard Wago cargado correctamente');
         console.log('📱 Modo móvil:', detectMobile());
         console.log('📂 Sidebar abierto:', sidebarOpen);
-        // Capturar el clic en el botón "Upgrade"
         // ============================================================
-        //  UPGRADE (igual)
+        //  SELECCIÓN DE PLANES Y PAGO
         // ============================================================
-        const upgradeBtn = document.getElementById('upgradeBtn');
-        if (upgradeBtn) {
-            upgradeBtn.addEventListener('click', async () => {
+        document.querySelectorAll('.plan-btn').forEach(btn => {
+            btn.addEventListener('click', async function () {
+                const tier = this.dataset.tier;
+                // Mostrar nombre del plan en el modal
+                const planNames = {
+                    basico: 'Básico',
+                    enterprise: 'Enterprise',
+                    premium: 'Premium'
+                };
+
                 try {
                     const res = await fetch('/payments/checkout', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
-                        body: JSON.stringify({ bot_id: window.botID, tier: 'pro' })
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-Token': getCsrfToken()
+                        },
+                        body: JSON.stringify({
+                            bot_id: window.botID,
+                            tier: tier
+                        })
                     });
+
                     const data = await res.json();
-                    console.log(data)
-                    if (res.ok && data.checkout_url) {
-                        window.location.href = data.checkout_url;
+
+                    if (res.ok) {
+                        // Mostrar modal con la info de pago
+                        showPaymentModal(data, planNames[tier]);
                     } else {
-                        Toast.show(data.error || "Error al iniciar pago", "error");
+                        Toast.show(data.error || 'Error al generar el pago', 'error');
                     }
                 } catch (err) {
-                    Toast.show("Error de red", "error");
+                    Toast.show('Error de red', 'error');
                 }
             });
-        }
+        });
 
-        function showPaymentModal(data) {
+        function showPaymentModal(data, planName) {
             const modal = document.getElementById('paymentModal');
+            const planEl = document.getElementById('paymentPlan');
+            const amountEl = document.getElementById('paymentAmount');
             const addressEl = document.getElementById('paymentAddress');
             const qrEl = document.getElementById('paymentQR');
             const instructionsEl = document.getElementById('paymentInstructions');
 
+            planEl.textContent = planName || data.tier;
+            amountEl.textContent = data.amount.toFixed(2);
             addressEl.textContent = data.checkout_address;
-            qrEl.src = data.qr_code; // data:image/png;base64,...
-            instructionsEl.textContent = data.instructions || 'Envía el monto exacto en USDT (TRC-20) a esta dirección.';
+            qrEl.src = data.qr_code;
+            instructionsEl.textContent = data.instructions || `Envía el monto exacto en USDT (TRC-20) a esta dirección.`;
 
             const urlLink = document.getElementById('paymentUrl');
             if (data.payment_url) {
@@ -2029,6 +2066,36 @@
             }
 
             modal.style.display = 'block';
+        }
+
+        // ============================================================
+        //  POLLING PARA VERIFICAR PAGO (ejecutar después de mostrar el modal)
+        // ============================================================
+        let paymentPollInterval = null;
+
+        function checkPaymentStatus() {
+            if (paymentPollInterval) return;
+
+            Toast.show('Verificando pago...', 'info');
+            paymentPollInterval = setInterval(async () => {
+                try {
+                    const res = await fetch('/user/status', {
+                        headers: { 'X-CSRF-Token': getCsrfToken() }
+                    });
+                    const data = await res.json();
+                    if (data.tier !== 'free' && data.tier !== '') {
+                        // El pago fue exitoso, suscripción activada
+                        clearInterval(paymentPollInterval);
+                        paymentPollInterval = null;
+                        Toast.show('¡Suscripción activada!', 'success');
+                        document.getElementById('paymentModal').style.display = 'none';
+                        // Actualizar la UI (recargar o actualizar estado)
+                        location.reload(); // o actualizar manualmente
+                    }
+                } catch (err) {
+                    console.error('Error polling status:', err);
+                }
+            }, 5000);
         }
     </script>
 </body>

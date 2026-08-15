@@ -15,11 +15,11 @@ func NewSubscriptionRepo(db *sql.DB) *SubscriptionRepo {
 	return &SubscriptionRepo{db: db}
 }
 
-func (r *SubscriptionRepo) Get(ctx context.Context, botID int) (*domain.Subscription, error) {
+func (r *SubscriptionRepo) Get(ctx context.Context, ID int) (*domain.Subscription, error) {
 	var sub domain.Subscription
-	sub.BotID = botID
+	sub.ID = ID
 	err := r.db.QueryRowContext(ctx,
-		`SELECT tier, msg_limit, expires_at FROM subscriptions WHERE bot_id = ?`, botID).
+		`SELECT id,tier, msg_limit, expires_at FROM subscriptions WHERE id = ?`, ID).
 		Scan(&sub.Tier, &sub.MsgLimit, &sub.ExpiresAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -31,7 +31,7 @@ func (r *SubscriptionRepo) Save(ctx context.Context, sub *domain.Subscription) e
 	_, err := r.db.ExecContext(ctx,
 		`INSERT INTO subscriptions (bot_id, tier, msg_limit, expires_at) VALUES (?, ?, ?, ?)
 		 ON CONFLICT (bot_id) DO UPDATE SET tier = ?, msg_limit = ?, expires_at = ?`,
-		sub.BotID, sub.Tier, sub.MsgLimit, sub.ExpiresAt,
+		sub.ID, sub.Tier, sub.MsgLimit, sub.ExpiresAt,
 		sub.Tier, sub.MsgLimit, sub.ExpiresAt)
 	return err
 }

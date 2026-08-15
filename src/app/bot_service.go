@@ -154,7 +154,11 @@ func (s *BotService) InitBot(botID int, qrResult chan<- string) {
 		}
 		log.Info().Msg("Bot finalized")
 	}()
-
+	user, err := s.users.GetUserByBotID(ctx, botID)
+	if err != nil {
+		log.Error().Err(err).Msg("Bot not found")
+		return
+	}
 	bot, err := s.bots.GetByID(ctx, botID)
 	if err != nil || bot == nil {
 		log.Error().Err(err).Msg("Bot not found")
@@ -174,10 +178,10 @@ func (s *BotService) InitBot(botID int, qrResult chan<- string) {
 		prompt = "Eres un asistente útil."
 	}
 
-	sub, err := s.subs.Get(ctx, botID)
+	sub, err := s.subs.Get(ctx, user.ID)
 	if err != nil || sub == nil {
 		sub = &domain.Subscription{
-			BotID:     botID,
+			ID:        user.ID,
 			Tier:      "free",
 			MsgLimit:  10,
 			ExpiresAt: time.Now().Add(s.cfg.SubscriptionDuration),

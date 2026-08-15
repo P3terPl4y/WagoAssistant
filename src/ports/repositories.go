@@ -51,6 +51,7 @@ type PromptRepository interface {
 
 // SubscriptionRepository defines the contract for subscription data access.
 type SubscriptionRepository interface {
+	GetSubscription(ctx context.Context, ID int) (domain.Subscription, error)
 	Get(ctx context.Context, botID int) (*domain.Subscription, error)
 	Save(ctx context.Context, sub *domain.Subscription) error
 }

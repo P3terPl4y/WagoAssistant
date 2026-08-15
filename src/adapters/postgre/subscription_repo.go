@@ -17,11 +17,11 @@ func NewSubscriptionRepo(db *pgxpool.Pool) *SubscriptionRepo {
 	return &SubscriptionRepo{db: db}
 }
 
-func (r *SubscriptionRepo) Get(ctx context.Context, botID int) (*domain.Subscription, error) {
+func (r *SubscriptionRepo) Get(ctx context.Context, ID int) (*domain.Subscription, error) {
 	var sub domain.Subscription
-	sub.BotID = botID
+	sub.ID = ID
 	err := r.db.QueryRow(ctx,
-		`SELECT tier, msg_limit, expires_at FROM subscriptions WHERE bot_id = $1`, botID).
+		`SELECT tier, msg_limit, expires_at FROM subscriptions WHERE bot_id = $1`, ID).
 		Scan(&sub.Tier, &sub.MsgLimit, &sub.ExpiresAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -33,7 +33,7 @@ func (r *SubscriptionRepo) Save(ctx context.Context, sub *domain.Subscription) e
 	_, err := r.db.Exec(ctx,
 		`INSERT INTO subscriptions (bot_id, tier, msg_limit, expires_at) VALUES ($1, $2, $3, $4)
 		 ON CONFLICT (bot_id) DO UPDATE SET tier = $5, msg_limit = $6, expires_at = $7`,
-		sub.BotID, sub.Tier, sub.MsgLimit, sub.ExpiresAt,
+		sub.ID, sub.Tier, sub.MsgLimit, sub.ExpiresAt,
 		sub.Tier, sub.MsgLimit, sub.ExpiresAt)
 	return err
 }
@@ -90,4 +90,14 @@ func (r *OAuthRepo) SaveRefreshToken(ctx context.Context, userID int, provider, 
 		 ON CONFLICT (user_id, provider) DO UPDATE SET refresh_token = $4, updated_at = CURRENT_TIMESTAMP`,
 		userID, provider, refreshToken, refreshToken)
 	return err
+}
+func (r *SubscriptionRepo) GetSubscription(ctx context.Context, ID int) (domain.Subscription, error) {
+	var sub domain.Subscription
+	err := r.db.QueryRow(ctx,
+		`SELECT id, tier, msg_limit, expires_at FROM subscriptions WHERE id = $1`,
+		ID).Scan(&sub.ID, &sub.Tier, &sub.MsgLimit, &sub.ExpiresAt)
+	if err != nil {
+		return sub, err
+	}
+	return sub, nil
 }

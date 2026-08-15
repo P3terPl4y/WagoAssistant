@@ -64,7 +64,7 @@ func Setup(
 	app.Get("/bot/:id/status", handlers.AuthRequired)
 	app.Get("/bot/:id/prompt", handlers.AuthRequired, botH.GetPrompt)
 	app.Get("/user/:id/phone", handlers.AuthRequired, authH.GetPhone)
-
+	app.Get("/user/status", handlers.AuthRequired, paymentH.GetSubscription)
 	// ──── Dashboard ────
 	app.Get("/dashboard", handlers.AuthRequired, dashH.Render)
 	app.Get("/pedidos", handlers.AuthRequired, dashH.ListPedidos)

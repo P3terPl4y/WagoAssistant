@@ -62,7 +62,7 @@ func runMigrations(pool *pgxpool.Pool, ctx context.Context, log logger.Logger) {
 		created_at DATE DEFAULT CURRENT_TIMESTAMP
 	);
 	CREATE TABLE IF NOT EXISTS subscriptions (
-		bot_id INTEGER PRIMARY KEY REFERENCES bots(id) ON DELETE CASCADE,
+		id INTEGER REFERENCES users(id) ON DELETE CASCADE,
 		tier TEXT NOT NULL DEFAULT 'free',
 		msg_limit INTEGER NOT NULL DEFAULT 10,
 		expires_at DATE NOT NULL

@@ -125,7 +125,6 @@ func TestRespond_Success(t *testing.T) {
 		ai:          aiMock,
 		chat:        chatSvc,
 		cache:       cacheMock,
-		subs:        subMock,
 		prompts:     promptRepoMock,
 		promptCache: promptCache,
 		userSem:     userSem,

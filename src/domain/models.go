@@ -39,7 +39,7 @@ type ChatMessage struct {
 
 // Subscription represents the billing tier and usage limits for a bot.
 type Subscription struct {
-	BotID     int       `json:"bot_id"`
+	ID        int       `json:"id"`
 	Tier      string    `json:"tier"`      // 'free', 'pro', 'enterprise'
 	MsgLimit  int       `json:"msg_limit"` // -1 for unlimited
 	ExpiresAt time.Time `json:"expires_at"`
