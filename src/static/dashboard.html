@@ -1819,29 +1819,7 @@
             btn.classList.remove('loading');
         });
 
-        // ============================================================
-        //  UPGRADE (igual)
-        // ============================================================
-        const upgradeBtn = document.getElementById('upgradeBtn');
-        if (upgradeBtn) {
-            upgradeBtn.addEventListener('click', async () => {
-                try {
-                    const res = await fetch('/payments/checkout', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
-                        body: JSON.stringify({ bot_id: window.botID, tier: 'pro' })
-                    });
-                    const data = await res.json();
-                    if (res.ok && data.checkout_url) {
-                        window.location.href = data.checkout_url;
-                    } else {
-                        Toast.show(data.error || "Error al iniciar pago", "error");
-                    }
-                } catch (err) {
-                    Toast.show("Error de red", "error");
-                }
-            });
-        }
+       
 
         // ============================================================
         //  ESTADO DE IA (SOLO ADMIN)
