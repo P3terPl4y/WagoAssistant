@@ -903,6 +903,17 @@
                                 <i class="fas fa-crown"></i>
                                 <span class="btn-text">Hacer Upgrade</span>
                             </button>
+                            <div id="paymentModal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <span class="close" onclick="document.getElementById('paymentModal').style.display='none'">&times;</span>
+        <h3>Paga con USDT</h3>
+        <p><strong>Dirección:</strong> <span id="paymentAddress"></span></p>
+        <img id="paymentQR" src="" alt="QR de pago" style="max-width:200px;" />
+        <p id="paymentInstructions"></p>
+        <a id="paymentUrl" href="#" target="_blank" style="display:none;">Abrir en PayzCore</a>
+        <button onclick="checkPaymentStatus()">Ya pagué, verificar</button>
+    </div>
+</div>
                         </div>
                     </div>
 
@@ -1963,6 +1974,56 @@
         console.log('✅ Dashboard Wago cargado correctamente');
         console.log('📱 Modo móvil:', detectMobile());
         console.log('📂 Sidebar abierto:', sidebarOpen);
+        // Capturar el clic en el botón "Upgrade"
+document.getElementById('upgradeBtn').addEventListener('click', async function () {
+    const tier = 'pro'; // o 'enterprise' según selección del usuario
+
+    try {
+        const res = await fetch('/payments/checkout', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': getCsrfToken()
+            },
+            body: JSON.stringify({
+                bot_id: window.botID,
+                tier: tier
+            })
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+            // Mostrar el QR y la dirección en un modal
+            showPaymentModal(data);
+        } else {
+            Toast.show(data.error || 'Error al generar el pago', 'error');
+        }
+    } catch (err) {
+        Toast.show('Error de red', 'error');
+    }
+});
+
+function showPaymentModal(data) {
+    // Crear o mostrar un modal con la info de pago
+    const modal = document.getElementById('paymentModal');
+    const addressEl = document.getElementById('paymentAddress');
+    const qrEl = document.getElementById('paymentQR');
+    const instructionsEl = document.getElementById('paymentInstructions');
+
+    addressEl.textContent = data.checkout_address;
+    qrEl.src = data.qr_code; // data:image/png;base64,...
+    instructionsEl.textContent = data.instructions || 'Envía el monto exacto en USDT (TRC-20) a esta dirección.';
+
+    // Opcional: mostrar la URL de pago de PayzCore (payment_url) como enlace
+    const urlLink = document.getElementById('paymentUrl');
+    if (data.payment_url) {
+        urlLink.href = data.payment_url;
+        urlLink.style.display = 'inline';
+    }
+
+    modal.style.display = 'block';
+}
     </script>
 </body>
 
