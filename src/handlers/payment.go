@@ -74,7 +74,7 @@ func (h *PaymentHandler) Checkout(c fiber.Ctx) error {
 
 	payload := map[string]interface{}{
 		"amount":       amount, // número, no string
-		"external_ref": "test_123",
+		"external_ref": orderID,
 		"network":      "TRC20",
 		"token":        "USDT",
 	}
