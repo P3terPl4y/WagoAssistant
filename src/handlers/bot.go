@@ -46,8 +46,11 @@ func (h *BotHandler) StartBot(c fiber.Ctx) error {
 		return c.JSON(fiber.Map{"status": "error", "message": "Error al verificar bots"})
 	}
 	h.logger.Info().Msg("YA")
+	h.logger.Info().Msg("YA")
 
 	if len(bots) > 0 {
+		h.logger.Info().Msg("YA")
+
 		bot := bots[0]
 		if bot.Blocked {
 			h.logger.Info().Msg("YA")
