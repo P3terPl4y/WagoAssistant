@@ -40,11 +40,12 @@ func (h *BotHandler) StartBot(c fiber.Ctx) error {
 	ctx := c
 
 	// ... (logs existentes) ...
-
+	h.logger.Info().Msg("YA")
 	bots, err := h.botRepo.GetByUser(ctx, userID)
 	if err != nil {
 		return c.JSON(fiber.Map{"status": "error", "message": "Error al verificar bots"})
 	}
+	h.logger.Info().Msg("YA")
 
 	if len(bots) > 0 {
 		bot := bots[0]
@@ -65,6 +66,7 @@ func (h *BotHandler) StartBot(c fiber.Ctx) error {
 			// ---------------------------------------
 			return c.JSON(fiber.Map{"status": "session_exists", "id": bot.ID})
 		}
+		h.logger.Info().Msg("YA")
 
 		// 🔹 Si el bot no está activo, lanzarlo
 		result := h.LaunchBot(c, bot.ID)
@@ -84,6 +86,7 @@ func (h *BotHandler) StartBot(c fiber.Ctx) error {
 			}(bot.ID)
 		}
 		// ------------------------------------------------------------
+		h.logger.Info().Msg("YA")
 
 		return result
 	}
@@ -272,4 +275,3 @@ func (h *BotHandler) GetPrompt(c fiber.Ctx) error {
 	}
 	return c.SendString(promtp)
 }
-
