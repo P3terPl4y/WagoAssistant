@@ -2040,7 +2040,7 @@
                         Toast.show(data.error || 'Error al generar el pago', 'error');
                     }
                 } catch (err) {
-                    Toast.show('Error de red', err);
+                    Toast.show(err, 'error');
                 }
             });
         });
