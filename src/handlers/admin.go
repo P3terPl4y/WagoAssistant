@@ -77,36 +77,54 @@ func (h *AdminHandler) GetAllBotsStatus(c fiber.Ctx) error {
 	return c.JSON(fiber.Map{"bots": result})
 }
 func (h *AdminHandler) CreateBot(c fiber.Ctx) error {
+	log := h.logger.WithBotID(1)
+
+	log.Info().Msg("YA")
+
 	var req struct {
 		UserID int `json:"user_id"`
 	}
 	if err := json.Unmarshal(c.Body(), &req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Datos inválidos"})
 	}
+	log.Info().Msg("YA")
+
 	if req.UserID <= 0 {
 		return c.Status(400).JSON(fiber.Map{"error": "ID de usuario inválido"})
 	}
+	log.Info().Msg("YA")
+
 	user, err := h.userSvc.GetByID(c, req.UserID)
 	if err != nil || user == nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Usuario no encontrado"})
 	}
+	log.Info().Msg("YA")
+
 	count, err := h.botRepo.CountByUser(c, req.UserID)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Error al contar bots"})
 	}
+	log.Info().Msg("YA")
+
 	if count >= h.maxBots {
 		return c.Status(400).JSON(fiber.Map{"error": fmt.Sprintf("El usuario ya tiene %d bots (límite %d)", count, h.maxBots)})
 	}
+	log.Info().Msg("YA")
+
 	sessionFile := fmt.Sprintf("./src/db/whatsapp_bot%d.db", req.UserID)
 	botID, err := h.botRepo.Create(c, req.UserID, sessionFile, "free")
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Error al crear bot"})
 	}
+	log.Info().Msg("YA")
+
 	newSessionFile := fmt.Sprintf("./src/db/whatsapp_bot%d.db", botID)
 	err = h.botRepo.UpdateSessionFile(c, botID, newSessionFile)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Error al actualizar la session"})
 	}
+	log.Info().Msg("YA")
+
 	return c.JSON(fiber.Map{"status": "ok", "bot_id": botID})
 }
 
