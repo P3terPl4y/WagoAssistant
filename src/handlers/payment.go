@@ -398,7 +398,7 @@ func (h *PaymentHandler) Webhook(c fiber.Ctx) error {
 */
 func (h *PaymentHandler) GetSubscription(c fiber.Ctx) error {
 	// Obtén el userID de la sesión
-	userID := c.Locals("userID").(int)
+	userID := c.Locals("user_id").(int)
 	// Busca en la BD el tier y límite
 
 	sub, err := h.subs.GetSubscription(c, userID)
