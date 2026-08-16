@@ -82,8 +82,8 @@ func (r *BotRepo) Create(ctx context.Context, userID int, sessionFile, paymentSt
 
 	// Crear suscripción gratuita por defecto con expiración a 30 días (sintaxis PostgreSQL)
 	_, err = tx.Exec(ctx,
-		`INSERT INTO subscriptions (bot_id, tier, msg_limit, expires_at) VALUES ($1, 'free', 10, CURRENT_DATE + INTERVAL '30 days')`,
-		botID)
+		`INSERT INTO subscriptions (id, tier, msg_limit, expires_at) VALUES ($1, 'free', 10, CURRENT_DATE + INTERVAL '30 days')`,
+		userID)
 	if err != nil {
 		return 0, err
 	}

@@ -96,6 +96,7 @@ func (h *BotHandler) StartBot(c fiber.Ctx) error {
 
 		return result
 	}
+	h.logger.Info().Msg("YA")
 
 	// 🔹 Crear nuevo bot (si no existe)
 	status := "pending"
@@ -104,6 +105,8 @@ func (h *BotHandler) StartBot(c fiber.Ctx) error {
 	}
 	sessionFile := fmt.Sprintf("whatsapp_bot%d.db", userID)
 	newID, err := h.botRepo.Create(ctx, userID, sessionFile, status)
+	h.logger.Info().Msg("YA")
+
 	if err != nil {
 		return c.JSON(fiber.Map{"status": "error", "message": "Error al crear bot"})
 	}
