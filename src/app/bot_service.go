@@ -203,6 +203,7 @@ func (s *BotService) InitBot(botID int, qrResult chan<- string) {
 	clientLog := waLog.Stdout("Client", "WARN", true)
 	client := whatsmeow.NewClient(deviceStore, clientLog)
 	s.botMgr.Register(botID, client, cancel)
+	log.Info().Msg("YA")
 
 	// Event handler
 	client.AddEventHandler(func(evt interface{}) {
