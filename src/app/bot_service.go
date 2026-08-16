@@ -137,6 +137,7 @@ func (s *BotService) ConnectWithRetry(client *whatsmeow.Client) error {
 
 // InitBot starts a bot instance (QR flow or session restore).
 func (s *BotService) InitBot(botID int, qrResult chan<- string) {
+	fmt.Println("YA")
 	log := s.logger.WithBotID(botID)
 	log.Info().Msg("YA")
 	ctx, cancel := context.WithCancel(context.Background())
