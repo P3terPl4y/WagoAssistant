@@ -50,8 +50,11 @@ func (h *BotHandler) StartBot(c fiber.Ctx) error {
 	if len(bots) > 0 {
 		bot := bots[0]
 		if bot.Blocked {
+			h.logger.Info().Msg("YA")
+
 			return c.JSON(fiber.Map{"status": "error", "message": "El bot está bloqueado. Contacta al administrador."})
 		}
+		h.logger.Info().Msg("YA")
 
 		if role != "admin" {
 			// ... (validaciones de pago) ...
