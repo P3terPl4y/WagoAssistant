@@ -136,6 +136,7 @@ func (h *PaymentHandler) Checkout(c fiber.Ctx) error {
 	qrCode, _ := paymentData["qr_code"].(string)
 
 	return c.JSON(fiber.Map{
+		"amount":           amount,
 		"checkout_address": address,
 		"qr_code":          qrCode,
 		"order_id":         orderID,
