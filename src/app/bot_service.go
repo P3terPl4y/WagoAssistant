@@ -139,10 +139,8 @@ func (s *BotService) ConnectWithRetry(client *whatsmeow.Client) error {
 func (s *BotService) InitBot(botID int, qrResult chan<- string) {
 	fmt.Println("YA")
 	log := s.logger.WithBotID(botID)
-	log.Info().Msg("YA")
-	ctx, cancel := context.WithCancel(context.Background())
 
-	log.Info().Msg("YA")
+	ctx, cancel := context.WithCancel(context.Background())
 
 	sendQR := func(val string) {
 		defer func() { recover() }()
@@ -159,7 +157,6 @@ func (s *BotService) InitBot(botID int, qrResult chan<- string) {
 		log.Info().Msg("Bot finalized")
 	}()
 	user, err := s.users.GetUserByBotID(ctx, botID)
-	log.Info().Msg("YA")
 
 	if err != nil {
 		log.Error().Err(err).Msg("Bot not found")
@@ -183,7 +180,6 @@ func (s *BotService) InitBot(botID int, qrResult chan<- string) {
 	if prompt == "" {
 		prompt = "Eres un asistente útil."
 	}
-	log.Info().Msg("YA")
 
 	sub, err := s.subs.Get(ctx, user.ID)
 	if err != nil || sub == nil {
@@ -199,7 +195,6 @@ func (s *BotService) InitBot(botID int, qrResult chan<- string) {
 		}
 	}
 	log.Info().Time("expires_at", sub.ExpiresAt).Str("tier", sub.Tier).Msg("Subscription info")
-	log.Info().Msg("YA")
 
 	container := s.GetContainer(botID)
 	deviceStore, err := container.GetFirstDevice(ctx)
@@ -207,12 +202,10 @@ func (s *BotService) InitBot(botID int, qrResult chan<- string) {
 		log.Error().Err(err).Msg("Failed to get device")
 		return
 	}
-	log.Info().Msg("YA")
 
 	clientLog := waLog.Stdout("Client", "WARN", true)
 	client := whatsmeow.NewClient(deviceStore, clientLog)
 	s.botMgr.Register(botID, client, cancel)
-	log.Info().Msg("YA")
 
 	// Event handler
 	client.AddEventHandler(func(evt interface{}) {

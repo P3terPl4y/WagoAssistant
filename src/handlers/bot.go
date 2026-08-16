@@ -40,24 +40,18 @@ func (h *BotHandler) StartBot(c fiber.Ctx) error {
 	ctx := c
 
 	// ... (logs existentes) ...
-	h.logger.Info().Msg("YA")
 	bots, err := h.botRepo.GetByUser(ctx, userID)
 	if err != nil {
 		return c.JSON(fiber.Map{"status": "error", "message": "Error al verificar bots"})
 	}
-	h.logger.Info().Msg("YA")
-	h.logger.Info().Msg("YA")
 
 	if len(bots) > 0 {
-		h.logger.Info().Msg("YA")
 
 		bot := bots[0]
 		if bot.Blocked {
-			h.logger.Info().Msg("YA")
 
 			return c.JSON(fiber.Map{"status": "error", "message": "El bot está bloqueado. Contacta al administrador."})
 		}
-		h.logger.Info().Msg("YA")
 
 		if role != "admin" {
 			// ... (validaciones de pago) ...
@@ -72,7 +66,6 @@ func (h *BotHandler) StartBot(c fiber.Ctx) error {
 			// ---------------------------------------
 			return c.JSON(fiber.Map{"status": "session_exists", "id": bot.ID})
 		}
-		h.logger.Info().Msg("YA")
 
 		// 🔹 Si el bot no está activo, lanzarlo
 		result := h.LaunchBot(c, bot.ID)
@@ -92,11 +85,9 @@ func (h *BotHandler) StartBot(c fiber.Ctx) error {
 			}(bot.ID)
 		}
 		// ------------------------------------------------------------
-		h.logger.Info().Msg("YA")
 
 		return result
 	}
-	h.logger.Info().Msg("YA")
 
 	// 🔹 Crear nuevo bot (si no existe)
 	status := "pending"
@@ -105,7 +96,6 @@ func (h *BotHandler) StartBot(c fiber.Ctx) error {
 	}
 	sessionFile := fmt.Sprintf("whatsapp_bot%d.db", userID)
 	newID, err := h.botRepo.Create(ctx, userID, sessionFile, status)
-	h.logger.Info().Msg("YA")
 
 	if err != nil {
 		return c.JSON(fiber.Map{"status": "error", "message": "Error al crear bot"})
